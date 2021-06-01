@@ -5,6 +5,7 @@ import (
 	"github.com/juxuny/data-utils/log"
 	"github.com/juxuny/data-utils/model"
 	"github.com/pkg/errors"
+	"time"
 )
 
 type queueMysqlDriver struct {
@@ -25,13 +26,23 @@ func (t *queueMysqlDriver) GetById(ids ...int64) (jobList []model.Job, err error
 	return
 }
 
-func (t *queueMysqlDriver) UpdateState(state model.JobState, ids ...int64) (err error) {
+func (t *queueMysqlDriver) UpdateState(state model.JobState, result string, ids ...int64) (err error) {
 	if len(ids) == 0 {
 		return nil
 	}
-	if err := t.db.Model(&model.Job{}).Where("in IN (?)", ids).Updates(map[string]interface{}{
+	update := map[string]interface{}{
 		"state": state,
-	}).Error; err != nil {
+	}
+	if state == model.JobStateRunning {
+		update["started_at"] = time.Now()
+	}
+	if state == model.JobStateSucceed || state == model.JobStateFailed {
+		update["end_at"] = time.Now()
+	}
+	if state == model.JobStateFailed {
+		update["result"] = result
+	}
+	if err := t.db.Model(&model.Job{}).Where("id IN (?)", ids).Updates(update).Error; err != nil {
 		t.logger.Error(err)
 		return errors.Wrap(err, "update table failed: job")
 	}
@@ -54,6 +65,7 @@ func (t *queueMysqlDriver) Dequeue(num int, jobType ...model.JobType) (list JobL
 		list = append(list, Job{
 			Id:       item.Id,
 			MetaData: item.MetaData,
+			JobType:  item.JobType,
 		})
 	}
 	return

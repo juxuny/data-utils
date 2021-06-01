@@ -9,14 +9,15 @@ import (
 )
 
 var weiboFlag = struct {
-	StartUrl string
-	UseEnv   bool
-	DbHost   string
-	DbPort   int
-	DbName   string
-	DbUser   string
-	DbPwd    string
-	Driver   string
+	StartUrl  string
+	UseEnv    bool
+	DbHost    string
+	DbPort    int
+	DbName    string
+	DbUser    string
+	DbPwd     string
+	Driver    string
+	BatchSize int
 }{}
 
 func getWeiboDbConfigFromCommandLineArgs() model.Config {
@@ -35,9 +36,6 @@ var weiboCmd = &cobra.Command{
 	Use:   "weibo",
 	Short: "weibo",
 	Run: func(cmd *cobra.Command, args []string) {
-		if weiboFlag.StartUrl == "" {
-			log.Fatal("missing --start-url")
-		}
 		var err error
 		var config data_utils.QueueConfig
 		if weiboFlag.UseEnv {
@@ -48,18 +46,22 @@ var weiboCmd = &cobra.Command{
 		} else {
 			config.DbConfig = getWeiboDbConfigFromCommandLineArgs()
 		}
+		config.BatchSize = weiboFlag.BatchSize
 		config.DriverType = data_utils.QueueDriverType(weiboFlag.Driver)
 		queue := data_utils.NewQueue(config)
-		job := data_utils.Job{
-			JobType:  model.JobTypeWeibo,
-			MetaData: weibo.MetaData{Url: weiboFlag.StartUrl}.ToJson(),
+		queue.RegisterHandler(weibo.NewHandlerBuilder(config))
+		if weiboFlag.StartUrl != "" {
+			job := data_utils.Job{
+				JobType:  model.JobTypeWeibo,
+				MetaData: weibo.MetaData{Url: weiboFlag.StartUrl}.ToJson(),
+			}
+			if err := queue.Enqueue(job); err != nil {
+				log.Fatal(err)
+			}
 		}
-		if err := queue.Enqueue(job); err != nil {
+		if err := queue.StartDaemon(); err != nil {
 			log.Fatal(err)
 		}
-		//if err := queue.StartDaemon(); err != nil {
-		//	log.Fatal(err)
-		//}
 	},
 }
 
@@ -68,6 +70,7 @@ func init() {
 	weiboCmd.PersistentFlags().StringVar(&weiboFlag.StartUrl, "start-url", "", "the first link for crawl")
 	weiboCmd.PersistentFlags().BoolVarP(&weiboFlag.UseEnv, "use-env", "e", false, "get arguments from environment variables")
 	weiboCmd.PersistentFlags().StringVar(&weiboFlag.Driver, "driver", data_utils.QueueDriverTypeMysql.ToString(), "queue driver")
+	weiboCmd.PersistentFlags().IntVar(&weiboFlag.BatchSize, "batch-size", 1, "batch size")
 
 	// database
 	weiboCmd.PersistentFlags().StringVar(&weiboFlag.DbHost, "db-host", "127.0.0.1", "database host")

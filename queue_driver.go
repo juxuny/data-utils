@@ -15,7 +15,7 @@ func (t QueueDriverType) ToString() string {
 
 type queueDriver interface {
 	GetById(ids ...int64) (jobList []model.Job, err error)
-	UpdateState(state model.JobState, ids ...int64) (err error)
+	UpdateState(state model.JobState, result string, ids ...int64) (err error)
 	Dequeue(num int, jobType ...model.JobType) (list JobList, err error)
 	Enqueue(jobList ...Job) (err error)
 }
