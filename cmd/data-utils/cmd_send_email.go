@@ -11,21 +11,48 @@ import (
 )
 
 var emailFlag struct {
-	DataFile    string
-	EmailList   []string
-	Config      string
-	Host        string
-	User        string
-	Password    string
-	DisplayName string
-	Ssl         bool
-	BatchSize   int
-	Delay       int
+	SenderData string
+	DataFile   string
+	EmailList  []string
+	Config     string
+	Host       string
+	User       string
+	Password   string
+	Ssl        bool
+	BatchSize  int
+	Delay      int
 }
 
 var emailCmd = &cobra.Command{
 	Use: "email",
 	Run: func(cmd *cobra.Command, args []string) {
+		var clientConfigList []email.ClientConfig
+		if emailFlag.SenderData != "" {
+			data, err := ioutil.ReadFile(emailFlag.SenderData)
+			if err != nil {
+				log.Fatal(err)
+			}
+			l := strings.Split(string(data), "\n")
+			for _, item := range l {
+				sender := strings.Split(item, "----")
+				if len(sender) == 2 {
+					clientConfigList = append(clientConfigList, email.ClientConfig{
+						User:        strings.Trim(sender[0], " \n\r\t-"),
+						DisplayName: "",
+						Password:    strings.Trim(sender[1], " \n\r\t-"),
+						Host:        emailFlag.Host,
+						Ssl:         emailFlag.Ssl,
+					})
+				}
+			}
+		} else if emailFlag.User != "" && emailFlag.Password != "" {
+			clientConfigList = append(clientConfigList, email.ClientConfig{
+				User:     emailFlag.User,
+				Password: emailFlag.Password,
+				Host:     emailFlag.Host,
+				Ssl:      emailFlag.Ssl,
+			})
+		}
 		if emailFlag.User == "" || emailFlag.Password == "" {
 			log.Fatal("user or password cannot be empty")
 		}
@@ -54,35 +81,47 @@ var emailCmd = &cobra.Command{
 		if err := yaml.Unmarshal(configData, &config); err != nil {
 			log.Fatal(err)
 		}
-		client := email.NewClient(email.ClientConfig{
-			User:        emailFlag.User,
-			DisplayName: emailFlag.DisplayName,
-			Password:    emailFlag.Password,
-			Host:        emailFlag.Host,
-			Ssl:         emailFlag.Ssl,
-		})
+
+		senderIndex := 0
+		if clientConfigList == nil || len(clientConfigList) == 0 {
+			log.Fatal("not sender config")
+			return
+		}
 		for i := 0; i < len(receiverList); i += emailFlag.BatchSize {
+			log.Info("used:", clientConfigList[senderIndex].User)
+			client := email.NewClient(email.ClientConfig{
+				User:        clientConfigList[senderIndex].User,
+				DisplayName: clientConfigList[senderIndex].DisplayName,
+				Password:    clientConfigList[senderIndex].Password,
+				Host:        clientConfigList[senderIndex].Host,
+				Ssl:         clientConfigList[senderIndex].Ssl,
+			})
 			var batch = make([]string, 0)
 			for j := 0; j < len(receiverList) && j < emailFlag.BatchSize; j++ {
 				batch = append(batch, receiverList[i+j])
 			}
 			config.To = batch
+			for _, item := range batch {
+				log.Info("sending: ", item)
+			}
 			if err := client.Send(config); err != nil {
 				log.Error(err)
 			}
 			time.Sleep(time.Second * time.Duration(emailFlag.Delay))
+			senderIndex += 1
+			senderIndex %= len(clientConfigList)
 		}
 	},
 }
 
 func init() {
 	initGlobalFlat(emailCmd)
+	emailCmd.PersistentFlags().StringVar(&emailFlag.SenderData, "sender-file", "tmp/sender.list", "sender email address list")
 	emailCmd.PersistentFlags().StringVar(&emailFlag.DataFile, "data-file", "", "a list of email")
 	emailCmd.PersistentFlags().StringSliceVar(&emailFlag.EmailList, "email", []string{}, "email")
 	emailCmd.PersistentFlags().StringVar(&emailFlag.Config, "config", "tmp/config.yaml", "email content")
 	emailCmd.PersistentFlags().StringVar(&emailFlag.Host, "host", "smtp.163.com:25", "email smtp host name")
 	emailCmd.PersistentFlags().StringVar(&emailFlag.User, "user", "", "user name")
-	emailCmd.PersistentFlags().StringVar(&emailFlag.DisplayName, "alias", "", "alias")
 	emailCmd.PersistentFlags().StringVar(&emailFlag.Password, "password", "", "password")
 	emailCmd.PersistentFlags().BoolVar(&emailFlag.Ssl, "ssl", false, "enable ssl")
 	emailCmd.PersistentFlags().IntVar(&emailFlag.BatchSize, "batch-size", 10, "batch size")
