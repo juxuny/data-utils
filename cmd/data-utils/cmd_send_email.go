@@ -6,6 +6,7 @@ import (
 	"github.com/juxuny/data-utils/log"
 	"github.com/spf13/cobra"
 	"io/ioutil"
+	"math/rand"
 	"strings"
 	"time"
 )
@@ -33,7 +34,9 @@ var emailCmd = &cobra.Command{
 				log.Fatal(err)
 			}
 			l := strings.Split(string(data), "\n")
-			for _, item := range l {
+			randIndex := rand.Perm(len(l))
+			for _, index := range randIndex {
+				item := l[index]
 				sender := strings.Split(item, "----")
 				if len(sender) == 2 {
 					clientConfigList = append(clientConfigList, email.ClientConfig{
