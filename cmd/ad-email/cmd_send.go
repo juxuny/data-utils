@@ -71,7 +71,7 @@ func incCount(db *model.DB, ids ...int64) error {
 	if len(ids) == 0 {
 		return nil
 	}
-	if err := db.Exec(fmt.Sprintf("UPDATE %s SET count = count + 1 WHERE id IN (?)", model.AdEmail{}.TableName()), ids).Error; err != nil {
+	if err := db.Exec(fmt.Sprintf("UPDATE %s SET count = count + 1, updated_at = CURRENT_TIMESTAMP(), last_success_time = CURRENT_TIMESTAMP() WHERE id IN (?)", model.AdEmail{}.TableName()), ids).Error; err != nil {
 		return errors.Wrap(err, "inc count failed")
 	}
 	return nil
