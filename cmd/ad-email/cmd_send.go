@@ -48,7 +48,7 @@ func getSenderClientConfigList(fileName string) (ret []email.ClientConfig, err e
 			DisplayName: emailAddress,
 			Password:    password,
 			Host:        sendFlag.Host,
-			Ssl:         false,
+			Ssl:         sendFlag.Ssl,
 		}
 	}
 	return clientConfigList, nil

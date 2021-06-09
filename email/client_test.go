@@ -1,12 +1,15 @@
 package email
 
-import "testing"
+import (
+	"github.com/juxuny/env"
+	"testing"
+)
 
 func TestClient(t *testing.T) {
 	c := NewClient(ClientConfig{
-		User:        "juxuny@163.com",
+		User:        env.GetString("MAIL", "juxuny@163.com"),
 		DisplayName: "fat-tiger",
-		Password:    "",
+		Password:    env.GetString("PASSWORD"),
 		Host:        "smtp.163.com:465",
 		Ssl:         true,
 	})
