@@ -17,3 +17,15 @@ CREATE TABLE job (
     INDEX(started_at),
     INDEX(end_at)
 ) comment 'job queue'
+
+
+DROP TABLE IF EXISTS ad_email;
+CREATE TABLE ad_email (
+    id bigint(21) primary key auto_increment,
+    email varchar(64) not null unique ,
+    count int(11) not null default 0,
+    created_at timestamp not null default current_timestamp,
+    updated_at timestamp null,
+    last_error TEXT,
+    INDEX(created_at)
+);
