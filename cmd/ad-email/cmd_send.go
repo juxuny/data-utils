@@ -131,6 +131,10 @@ var sendCmd = &cobra.Command{
 					running = false
 					return
 				}
+				if len(receiverList) == 0 {
+					running = false
+					return
+				}
 				clientConfig := clientConfigList[index]
 				index = (index + 1) % len(clientConfigList)
 				emailClient := email.NewClient(clientConfig)

@@ -36,7 +36,7 @@ func (t *client) send(user, sendUserName, password, host string, to []string, su
 	e.From = user
 	e.Subject = subject
 	if t.config.Ssl {
-		return e.SendWithTLS(t.config.Host, auth, &tls.Config{ServerName: t.config.Host})
+		return e.SendWithTLS(t.config.Host, auth, &tls.Config{ServerName: hp[0]})
 	} else {
 		return e.Send(t.config.Host, auth)
 	}
