@@ -16,3 +16,21 @@ type AdEmail struct {
 func (AdEmail) TableName() string {
 	return "ad_email"
 }
+
+type AdEmailList []AdEmail
+
+func (t AdEmailList) GetIdList() []int64 {
+	ret := make([]int64, len(t))
+	for i, item := range t {
+		ret[i] = item.Id
+	}
+	return ret
+}
+
+func (t AdEmailList) GetEmailList() []string {
+	ret := make([]string, len(t))
+	for i, item := range t {
+		ret[i] = item.Email
+	}
+	return ret
+}
