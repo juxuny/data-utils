@@ -19,6 +19,7 @@ var sendFlag = struct {
 	SenderFile string
 	ConfigFile string
 	BatchSize  int
+	Count      int // 发送多少批
 	Delay      int
 	Email      []string
 	CC         []string // 额外要发送的其它邮箱
@@ -136,6 +137,9 @@ var sendCmd = &cobra.Command{
 		}()
 		running := true
 		for running {
+			if sendFlag.Count > 0 {
+				sendFlag.Count -= 1
+			}
 			data_utils.RecoverRun(func() {
 				receiverList, err := enqueueEmail(db, sendFlag.BatchSize)
 				if err != nil {
@@ -177,6 +181,9 @@ var sendCmd = &cobra.Command{
 					}
 				}
 			})
+			if sendFlag.Count == 0 {
+				break
+			}
 			time.Sleep(time.Second * time.Duration(sendFlag.Delay))
 		}
 
@@ -193,5 +200,6 @@ func init() {
 	sendCmd.PersistentFlags().IntVar(&sendFlag.Delay, "delay", 1, "delay second")
 	sendCmd.PersistentFlags().StringSliceVar(&sendFlag.Email, "email", []string{}, "email")
 	sendCmd.PersistentFlags().StringSliceVar(&sendFlag.CC, "cc", []string{}, "extend email")
+	sendCmd.PersistentFlags().IntVar(&sendFlag.Count, "count", -1, "how many batch to send")
 	rootCmd.AddCommand(sendCmd)
 }
