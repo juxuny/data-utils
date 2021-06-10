@@ -2,7 +2,7 @@ package email
 
 import (
 	"fmt"
-	"gopkg.in/gomail.v2"
+	"github.com/juxuny/gomail"
 	"strconv"
 	"strings"
 	"time"
@@ -75,12 +75,6 @@ func (t *client) send(user, sendUserName, password, host string, to []string, cc
 		}
 		port = tmp
 	}
-	//out, err := os.Create("tmp/out.eml")
-	//if err != nil {
-	//	return err
-	//}
-	//defer out.Close()
-	//_, _ = m.WriteTo(out)
 	d := gomail.NewDialer(hp[0], int(port), user, password)
 	d.SSL = t.config.Ssl
 	if err := d.DialAndSend(m); err != nil {

@@ -7,8 +7,11 @@ import (
 	"github.com/juxuny/data-utils/email"
 	"github.com/juxuny/data-utils/log"
 	"github.com/juxuny/data-utils/model"
+	"github.com/juxuny/env"
+	"github.com/juxuny/gomail"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
+	"golang.org/x/net/proxy"
 	"io/ioutil"
 	"math/rand"
 	"strings"
@@ -24,8 +27,9 @@ var sendFlag = struct {
 	Email      []string
 	CC         []string // 额外要发送的其它邮箱
 
-	Host string
-	Ssl  bool
+	Host     string
+	Ssl      bool
+	ProxyUrl string
 }{}
 
 func getSenderClientConfigList(fileName string) (ret []email.ClientConfig, err error) {
@@ -84,7 +88,7 @@ func setFailed(db *model.DB, msg string, ids ...int64) error {
 	if len(ids) == 0 {
 		return nil
 	}
-	if err := db.Exec(fmt.Sprintf("UPDATE %s SET last_error = ?, updated_at = CURRENT_TIMESTAMP(), last_failed_time = CURRENT_TIMESTAMP() WHERE id IN (?)", model.AdEmail{}.TableName()), msg, ids).Error; err != nil {
+	if err := db.Exec(fmt.Sprintf("UPDATE %s SET last_error = ?, updated_at = CURRENT_TIMESTAMP(), last_error_time = CURRENT_TIMESTAMP() WHERE id IN (?)", model.AdEmail{}.TableName()), msg, ids).Error; err != nil {
 		return errors.Wrap(err, "inc count failed")
 	}
 	return nil
@@ -159,6 +163,17 @@ var sendCmd = &cobra.Command{
 					log.Info("email list is empty")
 					return
 				}
+				if sendFlag.ProxyUrl != "" {
+					proxyInfo, err := email.FetchProxyInfo(sendFlag.ProxyUrl)
+					if err != nil {
+						log.Fatal(err)
+					}
+					log.Info(fmt.Sprintf("proxy address: %v:%v", proxyInfo.Ip, proxyInfo.Port))
+					gomail.SetSocks5Proxy(proxyInfo.Ip, proxyInfo.Port, proxy.Auth{
+						User:     env.GetString("PROXY_USER"),
+						Password: env.GetString("PROXY_PASS"),
+					})
+				}
 				contentConfig.To = receiverEmailList
 				log.Info("sending, from ", clientConfig.User, " to ", receiverEmailList)
 				if err := emailClient.Send(contentConfig); err != nil {
@@ -201,5 +216,6 @@ func init() {
 	sendCmd.PersistentFlags().StringSliceVar(&sendFlag.Email, "email", []string{}, "email")
 	sendCmd.PersistentFlags().StringSliceVar(&sendFlag.CC, "cc", []string{}, "extend email")
 	sendCmd.PersistentFlags().IntVar(&sendFlag.Count, "count", -1, "how many batch to send")
+	sendCmd.PersistentFlags().StringVar(&sendFlag.ProxyUrl, "proxy-url", "", "proxy address api address")
 	rootCmd.AddCommand(sendCmd)
 }

@@ -1,15 +1,22 @@
 package email
 
 import (
-	"github.com/gamexg/proxyclient"
-	"io"
+	"github.com/juxuny/gomail"
+	"golang.org/x/net/proxy"
 	"io/ioutil"
 	"net/http"
-	"os"
 	"testing"
 )
 
 func TestClient(t *testing.T) {
+	proxyInfo, err := FetchProxyInfo("http://ww2502027.v4.dailiyun.com/query.txt?key=NP57E7DAA6&word=&count=1&rand=false&ltime=0&norepeat=false&detail=false")
+	if err != nil {
+		t.Fatal(err)
+	}
+	gomail.SetSocks5Proxy(proxyInfo.Ip, proxyInfo.port, proxy.Auth{
+		User:     "ww2502027",
+		Password: "ly1234567890.",
+	})
 	c := NewClient(ClientConfig{
 		User:        "fat-tiger@yandex.com",
 		DisplayName: "fat-tiger",
@@ -49,10 +56,14 @@ func TestClient(t *testing.T) {
 }
 
 func TestProxy(t *testing.T) {
-	_ = os.Setenv("https_proxy", "http://127.0.0.1:7890")
-	_ = os.Setenv("http_proxy", "http://127.0.0.1:7890")
-	_ = os.Setenv("all_proxy", "socks5://127.0.0.1:7890")
-	resp, err := http.Get("https://www.google.com")
+	req, err := http.NewRequest(http.MethodGet, "https://2021.ip138.com/", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Add("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9")
+	req.Header.Add("Host", "2021.ip138.com")
+	req.Header.Add("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.77 Safari/537.36")
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -64,20 +75,20 @@ func TestProxy(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Log(string(data))
-	p, err := proxyclient.NewProxyClient("socks5://127.0.0.1:7890")
-	if err != nil {
-		panic(err)
-	}
-
-	c, err := p.Dial("tcp", "www.google.com:80")
-	if err != nil {
-		panic(err)
-	}
-
-	io.WriteString(c, "GET / HTTP/1.0\r\nHOST:www.google.com\r\n\r\n")
-	b, err := ioutil.ReadAll(c)
-	if err != nil {
-		panic(err)
-	}
-	t.Log(string(b))
+	//p, err := proxyclient.NewProxyClient("socks5://117.71.149.248:57114")
+	//if err != nil {
+	//	panic(err)
+	//}
+	//
+	//c, err := p.Dial("tcp", "www.google.com:80")
+	//if err != nil {
+	//	panic(err)
+	//}
+	//
+	//io.WriteString(c, "GET / HTTP/1.0\r\nHOST:www.google.com\r\n\r\n")
+	//b, err := ioutil.ReadAll(c)
+	//if err != nil {
+	//	panic(err)
+	//}
+	//t.Log(string(b))
 }
