@@ -10,11 +10,12 @@ import (
 )
 
 type ClientConfig struct {
-	User        string `json:"user" yaml:"user"`
-	DisplayName string `json:"display_name" yaml:"display_name"`
-	Password    string `json:"password" yaml:"password"`
-	Host        string `json:"host" yaml:"host"`
-	Ssl         bool   `json:"ssl" yaml:"ssl"`
+	User        string   `json:"user" yaml:"user"`
+	DisplayName string   `json:"display_name" yaml:"display_name"`
+	Password    string   `json:"password" yaml:"password"`
+	Host        string   `json:"host" yaml:"host"`
+	Ssl         bool     `json:"ssl" yaml:"ssl"`
+	CC          []string `json:"cc" yaml:"cc"`
 }
 
 type client struct {
@@ -44,13 +45,23 @@ type client struct {
 //	}
 //}
 
-func (t *client) send(user, sendUserName, password, host string, to []string, subject string, body string, mailType MailType) error {
+func (t *client) send(user, sendUserName, password, host string, to []string, cc []string, subject string, body string, mailType MailType) error {
 	m := gomail.NewMessage()
 	m.SetHeader("From", m.FormatAddress(user, sendUserName))
 	//m.SetHeader("To", to...)
 	m.SetHeader("To", to...)
 	m.SetHeader("Subject", subject)
 	m.SetDateHeader("Date", time.Now())
+	finalCc := make([]string, 0)
+	if len(t.config.CC) > 0 {
+		finalCc = t.config.CC
+	}
+	if len(cc) > 0 {
+		for _, item := range cc {
+			finalCc = append(finalCc, item)
+		}
+	}
+	m.SetHeader("Cc", finalCc...)
 	m.SetHeader("Message-ID", fmt.Sprintf("%v", time.Now().UnixNano()))
 	//m.AddAlternative("text/plain", "hello", gomail.SetPartEncoding(gomail.Base64))
 	m.SetBody("text/"+string(mailType), body, gomail.SetPartEncoding(gomail.Base64))
@@ -86,6 +97,7 @@ func (t *client) Send(content ContentConfig) error {
 		t.config.Password,
 		t.config.Host,
 		content.To,
+		content.Cc,
 		content.Subject,
 		content.Body,
 		content.MailType,

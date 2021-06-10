@@ -12,4 +12,5 @@ type ContentConfig struct {
 	Body     string   `json:"body" yaml:"body"`
 	MailType MailType `json:"mail_type" yaml:"mail_type"`
 	To       []string `json:"to" yaml:"to"`
+	Cc       []string `json:"cc" yaml:"cc"`
 }

@@ -21,13 +21,14 @@ var sendFlag = struct {
 	BatchSize  int
 	Delay      int
 	Email      []string
+	CC         []string // 额外要发送的其它邮箱
 
 	Host string
 	Ssl  bool
 }{}
 
 func getSenderClientConfigList(fileName string) (ret []email.ClientConfig, err error) {
-	senderList, err := data_utils.GetListFromFile(sendFlag.SenderFile)
+	senderList, err := data_utils.GetListFromFile(fileName)
 	if err != nil {
 		log.Error(err)
 		return ret, errors.Wrap(err, "load sender email list failed")
@@ -49,6 +50,7 @@ func getSenderClientConfigList(fileName string) (ret []email.ClientConfig, err e
 			Password:    password,
 			Host:        sendFlag.Host,
 			Ssl:         sendFlag.Ssl,
+			CC:          sendFlag.CC,
 		}
 	}
 	return clientConfigList, nil
@@ -72,6 +74,16 @@ func incCount(db *model.DB, ids ...int64) error {
 		return nil
 	}
 	if err := db.Exec(fmt.Sprintf("UPDATE %s SET count = count + 1, updated_at = CURRENT_TIMESTAMP(), last_success_time = CURRENT_TIMESTAMP() WHERE id IN (?)", model.AdEmail{}.TableName()), ids).Error; err != nil {
+		return errors.Wrap(err, "inc count failed")
+	}
+	return nil
+}
+
+func setFailed(db *model.DB, msg string, ids ...int64) error {
+	if len(ids) == 0 {
+		return nil
+	}
+	if err := db.Exec(fmt.Sprintf("UPDATE %s SET last_error = ?, updated_at = CURRENT_TIMESTAMP(), last_failed_time = CURRENT_TIMESTAMP() WHERE id IN (?)", model.AdEmail{}.TableName()), msg, ids).Error; err != nil {
 		return errors.Wrap(err, "inc count failed")
 	}
 	return nil
@@ -148,6 +160,11 @@ var sendCmd = &cobra.Command{
 				if err := emailClient.Send(contentConfig); err != nil {
 					log.Error(err)
 					log.Info("send failed, from ", clientConfig.User, " to ", receiverEmailList)
+					if ids := receiverList.GetIdList(); ids != nil && len(ids) > 0 {
+						if err := setFailed(db, err.Error(), receiverList.GetIdList()...); err != nil {
+							log.Error(err)
+						}
+					}
 					running = false
 					return
 				}
@@ -175,5 +192,6 @@ func init() {
 	sendCmd.PersistentFlags().IntVar(&sendFlag.BatchSize, "batch-size", 10, "batch size")
 	sendCmd.PersistentFlags().IntVar(&sendFlag.Delay, "delay", 1, "delay second")
 	sendCmd.PersistentFlags().StringSliceVar(&sendFlag.Email, "email", []string{}, "email")
+	sendCmd.PersistentFlags().StringSliceVar(&sendFlag.CC, "cc", []string{}, "extend email")
 	rootCmd.AddCommand(sendCmd)
 }
