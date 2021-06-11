@@ -1,19 +1,30 @@
-package email
+package proxy
 
 import (
+	"fmt"
 	"github.com/pkg/errors"
+	"golang.org/x/net/proxy"
 	"io/ioutil"
 	"net/http"
 	"strconv"
 	"strings"
 )
 
-type ProxyInfo struct {
+type Config struct {
 	Ip   string
 	Port int
 }
 
-func FetchProxyInfo(url string) (ret *ProxyInfo, err error) {
+type Auth proxy.Auth
+
+func (t *Config) GetAddress(auth ...Auth) string {
+	if len(auth) > 0 {
+		return fmt.Sprintf("socks5://%s:%s@%s:%d", auth[0].User, auth[0].Password, t.Ip, t.Port)
+	}
+	return fmt.Sprintf("socks5://%s:%d", t.Ip, t.Port)
+}
+
+func FetchProxyInfo(url string) (ret *Config, err error) {
 	resp, err := http.Get(url)
 	if err != nil {
 		return nil, errors.Wrap(err, "request failed")
@@ -34,7 +45,7 @@ func FetchProxyInfo(url string) (ret *ProxyInfo, err error) {
 	if err != nil {
 		return nil, errors.Errorf("invalid port number: %v", l[1])
 	}
-	ret = &ProxyInfo{
+	ret = &Config{
 		Ip:   l[0],
 		Port: int(port),
 	}

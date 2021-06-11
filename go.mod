@@ -3,6 +3,8 @@ module github.com/juxuny/data-utils
 go 1.16
 
 require (
+	github.com/PuerkitoBio/goquery v1.5.1
+	github.com/djimenez/iconv-go v0.0.0-20160305225143-8960e66bd3da
 	github.com/ghodss/yaml v1.0.0
 	github.com/jinzhu/gorm v1.9.16
 	github.com/juxuny/env v1.1.0
@@ -14,5 +16,4 @@ require (
 	golang.org/x/net v0.0.0-20210610132358-84b48f89b13b
 	golang.org/x/sys v0.0.0-20210611083646-a4fc73990273 // indirect
 	google.golang.org/grpc v1.37.1
-	moul.io/moulsay v1.3.0
 )
