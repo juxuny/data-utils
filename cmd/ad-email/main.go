@@ -11,7 +11,7 @@ var logger = log.NewLogger("[su]")
 var (
 	rootCmd = &cobra.Command{
 		Use:   "ad-email",
-		Short: "ad-eamil",
+		Short: "ad-email",
 	}
 )
 
