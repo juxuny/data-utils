@@ -51,13 +51,23 @@ func (t *client) send(user, sendUserName, password, host string, to []string, cc
 	m.SetHeader("To", to...)
 	m.SetHeader("Subject", subject)
 	m.SetDateHeader("Date", time.Now())
+	toMap := map[string]bool{}
+	for _, item := range to {
+		toMap[item] = true
+	}
 	finalCc := make([]string, 0)
 	if len(t.config.CC) > 0 {
-		finalCc = t.config.CC
+		for _, item := range t.config.CC {
+			if !toMap[item] {
+				finalCc = append(finalCc, item)
+			}
+		}
 	}
 	if len(cc) > 0 {
 		for _, item := range cc {
-			finalCc = append(finalCc, item)
+			if !toMap[item] {
+				finalCc = append(finalCc, item)
+			}
 		}
 	}
 	m.SetHeader("Cc", finalCc...)

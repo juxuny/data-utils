@@ -7,11 +7,11 @@ import (
 	"github.com/juxuny/data-utils/email"
 	"github.com/juxuny/data-utils/log"
 	"github.com/juxuny/data-utils/model"
+	"github.com/juxuny/data-utils/proxy"
 	"github.com/juxuny/env"
 	"github.com/juxuny/gomail"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
-	"golang.org/x/net/proxy"
 	"io/ioutil"
 	"math/rand"
 	"strings"
@@ -26,6 +26,7 @@ var sendFlag = struct {
 	Delay      int
 	Email      []string
 	CC         []string // 额外要发送的其它邮箱
+	BlockOnce  bool
 
 	Host     string
 	Ssl      bool
@@ -164,15 +165,18 @@ var sendCmd = &cobra.Command{
 					return
 				}
 				if sendFlag.ProxyUrl != "" {
-					proxyInfo, err := email.FetchProxyInfo(sendFlag.ProxyUrl)
+					proxyInfo, err := proxy.FetchProxyInfo(sendFlag.ProxyUrl)
 					if err != nil {
 						log.Fatal(err)
 					}
 					log.Info(fmt.Sprintf("proxy address: %v:%v", proxyInfo.Ip, proxyInfo.Port))
-					gomail.SetSocks5Proxy(proxyInfo.Ip, proxyInfo.Port, proxy.Auth{
+					if err := gomail.SetProxy(proxyInfo.GetAddress(proxy.Auth{
 						User:     env.GetString("PROXY_USER"),
 						Password: env.GetString("PROXY_PASS"),
-					})
+					})); err != nil {
+						log.Error(err)
+						return
+					}
 				}
 				contentConfig.To = receiverEmailList
 				log.Info("sending, from ", clientConfig.User, " to ", receiverEmailList)
@@ -189,10 +193,12 @@ var sendCmd = &cobra.Command{
 				}
 				ids := receiverList.GetIdList()
 				if len(ids) > 0 {
-					if err := incCount(db, ids...); err != nil {
-						log.Error(err)
-						running = false
-						return
+					if sendFlag.BlockOnce {
+						if err := incCount(db, ids...); err != nil {
+							log.Error(err)
+							running = false
+							return
+						}
 					}
 				}
 			})
@@ -217,5 +223,6 @@ func init() {
 	sendCmd.PersistentFlags().StringSliceVar(&sendFlag.CC, "cc", []string{}, "extend email")
 	sendCmd.PersistentFlags().IntVar(&sendFlag.Count, "count", -1, "how many batch to send")
 	sendCmd.PersistentFlags().StringVar(&sendFlag.ProxyUrl, "proxy-url", "", "proxy address api address")
+	sendCmd.PersistentFlags().BoolVar(&sendFlag.BlockOnce, "block-once", true, "once sent an email, then increase count value and block the address")
 	rootCmd.AddCommand(sendCmd)
 }
