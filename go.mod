@@ -6,9 +6,13 @@ require (
 	github.com/ghodss/yaml v1.0.0
 	github.com/jinzhu/gorm v1.9.16
 	github.com/juxuny/env v1.1.0
-	github.com/juxuny/gomail v0.0.0-20210610184549-71efb9617695
+	github.com/juxuny/gomail v0.0.1
 	github.com/juxuny/log-server v0.1.0
+	github.com/juxuny/supervisor v0.0.0-20210528080938-5be7e7279de3
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/cobra v1.1.3
 	golang.org/x/net v0.0.0-20210610132358-84b48f89b13b
+	golang.org/x/sys v0.0.0-20210611083646-a4fc73990273 // indirect
+	google.golang.org/grpc v1.37.1
+	moul.io/moulsay v1.3.0
 )
