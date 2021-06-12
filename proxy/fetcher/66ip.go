@@ -7,6 +7,7 @@ import (
 	"github.com/djimenez/iconv-go"
 	"github.com/juxuny/data-utils/curl"
 	"github.com/juxuny/data-utils/log"
+	"github.com/juxuny/data-utils/model"
 	"github.com/juxuny/data-utils/proxy/dt"
 	"github.com/pkg/errors"
 	"net"
@@ -14,12 +15,15 @@ import (
 )
 
 type _66ip struct {
-	TotalPage int
-	data      dt.ServerList
+	TotalPage   int
+	data        dt.ServerList
+	saveHandler dt.SaveHandler
 }
 
-func New66Ip() (ret *_66ip) {
-	return &_66ip{}
+func New66Ip(saveHandler dt.SaveHandler) (ret *_66ip) {
+	return &_66ip{
+		saveHandler: saveHandler,
+	}
 }
 
 func (t *_66ip) Len() int {
@@ -33,6 +37,10 @@ func (t *_66ip) Page(page, pageSize int) (ret dt.ServerList, err error) {
 		end = len(t.data)
 	}
 	return t.data[offset:end], nil
+}
+
+func (t *_66ip) AllData() (ret dt.ServerList, err error) {
+	return t.data, nil
 }
 
 func (t *_66ip) getUrl(page int) string {
@@ -61,12 +69,13 @@ func (t *_66ip) parsePage(page int, cb ...func(selection *goquery.Document) erro
 		portValue := selection.Find("td:nth-child(2)").Text()
 		ip := net.ParseIP(ipValue)
 		port, errPort := strconv.ParseInt(portValue, 10, 64)
-		if errPort == nil && ip == nil {
+		if errPort == nil && ip != nil {
 			log.Debug("ip: ", ipValue, " port: ", portValue)
 			ret = append(ret, dt.ServerItem{
-				Schema: dt.SchemaTypeHttp,
-				Ip:     ipValue,
-				Port:   int(port),
+				Schema:   dt.SchemaTypeHttp,
+				Ip:       ipValue,
+				Port:     int(port),
+				Provider: model.Provider66Ip,
 			})
 		}
 	})
@@ -99,6 +108,11 @@ func (t *_66ip) Init() error {
 	for _, item := range data {
 		t.data = append(t.data, item)
 	}
+	if t.saveHandler != nil {
+		if err := t.saveHandler.SaveServerList(data); err != nil {
+			return errors.Wrapf(err, "save server list failed, page=%v", 1)
+		}
+	}
 	for i := 2; i <= t.TotalPage; i++ {
 		log.Info("load page: ", i)
 		data, err := t.parsePage(i, getTotalPageNum)
@@ -107,6 +121,11 @@ func (t *_66ip) Init() error {
 		}
 		for _, item := range data {
 			t.data = append(t.data, item)
+		}
+		if t.saveHandler != nil {
+			if err := t.saveHandler.SaveServerList(data); err != nil {
+				return errors.Wrapf(err, "save server list failed, page=%v", i)
+			}
 		}
 	}
 	return nil
