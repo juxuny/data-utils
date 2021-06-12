@@ -212,7 +212,7 @@ var sendCmd = &cobra.Command{
 }
 
 func init() {
-	initGlobalFlat(sendCmd)
+	initGlobalFlag(sendCmd)
 	sendCmd.PersistentFlags().StringVar(&sendFlag.SenderFile, "send-file", "tmp/sender.list", "sender email address list")
 	sendCmd.PersistentFlags().StringVar(&sendFlag.ConfigFile, "config", "tmp/config.yaml", "email content")
 	sendCmd.PersistentFlags().StringVar(&sendFlag.Host, "host", "smtp.163.com:25", "email smtp host name")

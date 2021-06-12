@@ -45,7 +45,7 @@ var proxyCmd = &cobra.Command{
 }
 
 func init() {
-	initGlobalFlat(proxyCmd)
+	initGlobalFlag(proxyCmd)
 	proxyCmd.PersistentFlags().StringVar(&proxyFlag.User, "user", "", "proxy user")
 	proxyCmd.PersistentFlags().StringVar(&proxyFlag.Pass, "pass", "", "proxy password")
 	proxyCmd.PersistentFlags().StringVar(&proxyFlag.Url, "url", "http://ww2502027.v4.dailiyun.com/query.txt?key=NP57E7DAA6&word=&count=1&rand=false&ltime=0&norepeat=false&detail=false", "proxy address api")

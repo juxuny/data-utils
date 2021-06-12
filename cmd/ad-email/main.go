@@ -24,7 +24,7 @@ var globalFlag = struct {
 	DbName  string
 }{}
 
-func initGlobalFlat(cmd *cobra.Command) {
+func initGlobalFlag(cmd *cobra.Command) {
 	cmd.PersistentFlags().BoolVarP(&globalFlag.Verbose, "verbose", "v", false, "display debug output")
 
 	// database

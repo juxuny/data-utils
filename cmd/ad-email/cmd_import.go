@@ -59,7 +59,7 @@ var importCmd = &cobra.Command{
 }
 
 func init() {
-	initGlobalFlat(importCmd)
+	initGlobalFlag(importCmd)
 	importCmd.PersistentFlags().StringVar(&importFlag.DataFile, "data-file", "tmp/email.list", "")
 	rootCmd.AddCommand(importCmd)
 }

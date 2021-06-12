@@ -118,7 +118,7 @@ var emailCmd = &cobra.Command{
 }
 
 func init() {
-	initGlobalFlat(emailCmd)
+	initGlobalFlag(emailCmd)
 	emailCmd.PersistentFlags().StringVar(&emailFlag.SenderData, "sender-file", "tmp/sender.list", "sender email address list")
 	emailCmd.PersistentFlags().StringVar(&emailFlag.DataFile, "data-file", "", "a list of email")
 	emailCmd.PersistentFlags().StringSliceVar(&emailFlag.EmailList, "email", []string{}, "email")

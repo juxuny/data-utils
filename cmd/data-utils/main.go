@@ -19,7 +19,7 @@ var globalFlag = struct {
 	Verbose bool
 }{}
 
-func initGlobalFlat(cmd *cobra.Command) {
+func initGlobalFlag(cmd *cobra.Command) {
 	cmd.PersistentFlags().BoolVarP(&globalFlag.Verbose, "verbose", "v", false, "display debug output")
 }
 

@@ -66,7 +66,7 @@ var weiboCmd = &cobra.Command{
 }
 
 func init() {
-	initGlobalFlat(weiboCmd)
+	initGlobalFlag(weiboCmd)
 	weiboCmd.PersistentFlags().StringVar(&weiboFlag.StartUrl, "start-url", "", "the first link for crawl")
 	weiboCmd.PersistentFlags().BoolVarP(&weiboFlag.UseEnv, "use-env", "e", false, "get arguments from environment variables")
 	weiboCmd.PersistentFlags().StringVar(&weiboFlag.Driver, "driver", data_utils.QueueDriverTypeMysql.ToString(), "queue driver")
