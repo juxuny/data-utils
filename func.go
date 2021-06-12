@@ -1,6 +1,7 @@
 package data_utils
 
 import (
+	"encoding/json"
 	"github.com/juxuny/data-utils/log"
 	"io/ioutil"
 	"runtime/debug"
@@ -30,4 +31,9 @@ func RecoverRun(f func()) {
 		return
 	}
 	f()
+}
+
+func ToJson(v interface{}) string {
+	data, _ := json.Marshal(v)
+	return string(data)
 }

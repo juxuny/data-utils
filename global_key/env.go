@@ -9,6 +9,8 @@ var EnvKey = struct {
 	DbPort  string
 	DbName  string
 	DbDebug string
+
+	TestHost string
 }{}
 
 func init() {
