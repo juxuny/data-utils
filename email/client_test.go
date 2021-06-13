@@ -1,22 +1,12 @@
 package email
 
 import (
-	"github.com/juxuny/gomail"
-	"golang.org/x/net/proxy"
 	"io/ioutil"
 	"net/http"
 	"testing"
 )
 
 func TestClient(t *testing.T) {
-	proxyInfo, err := FetchProxyInfo("http://ww2502027.v4.dailiyun.com/query.txt?key=NP57E7DAA6&word=&count=1&rand=false&ltime=0&norepeat=false&detail=false")
-	if err != nil {
-		t.Fatal(err)
-	}
-	gomail.SetSocks5Proxy(proxyInfo.Ip, proxyInfo.port, proxy.Auth{
-		User:     "ww2502027",
-		Password: "ly1234567890.",
-	})
 	c := NewClient(ClientConfig{
 		User:        "fat-tiger@yandex.com",
 		DisplayName: "fat-tiger",
