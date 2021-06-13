@@ -12,7 +12,7 @@ const (
 type Proxy struct {
 	Id           int64      `json:"id" gorm:"TYPE:BIGINT(20);PRIMARY_KEY;AUTO_INCREMENT"`
 	Ip           string     `json:"ip"`
-	Port         int64      `json:"port"`
+	Port         int        `json:"port"`
 	ProviderName Provider   `json:"provider_name"`
 	Socks5       bool       `json:"socks5" gorm:"COLUMN:socks5"`
 	Http         bool       `json:"http"`

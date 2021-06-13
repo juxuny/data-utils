@@ -1,15 +1,17 @@
 package proxy
 
 import (
+	"context"
 	"fmt"
-	"github.com/gamexg/proxyclient"
-	"github.com/juxuny/data-utils/global_key"
-	"github.com/juxuny/env"
+	"github.com/juxuny/data-utils/log"
+	"github.com/juxuny/data-utils/model"
+	"github.com/juxuny/data-utils/proxy/dt"
 	"github.com/pkg/errors"
 	"golang.org/x/net/proxy"
-	"io"
 	"io/ioutil"
+	"math/rand"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -57,13 +59,6 @@ func FetchProxyInfo(url string) (ret *Config, err error) {
 	return ret, nil
 }
 
-var (
-	ErrConnectFailed  = errors.Errorf("connect failed")
-	ErrSendDataFailed = errors.Errorf("send request failed")
-	ErrReadDataFailed = errors.Errorf("read response failed")
-	ErrEmptyResponse  = errors.Errorf("empty response")
-)
-
 type TestResult struct {
 	ConnectDuration  time.Duration `json:"connect_duration"`
 	SendDuration     time.Duration `json:"send_duration"`
@@ -74,53 +69,59 @@ type TestResult struct {
 	ErrSummary       map[error]int
 }
 
+const DefaultTestTimeout = time.Second * 10
+
 // address: proxy address, e.g socks5://user:pass@127.0.0.1:1080
 func Test(address string, num int) (ret *TestResult, err error) {
-	ret = &TestResult{}
-	client, err := proxyclient.NewProxyClient(address)
-	if err != nil {
-		return nil, errors.Wrap(err, "create proxy client failed")
+	ret = &TestResult{
+		ErrSummary: make(map[error]int),
 	}
-	testHost := env.GetString(global_key.EnvKey.TestHost, "www.baidu.com:80")
+	//client, err := proxyclient.NewProxyClient(address)
+	//if err != nil {
+	//	return nil, errors.Wrap(err, "create proxy client failed")
+	//}
+	//testHost := env.GetString(global_key.EnvKey.TestHost, "www.baidu.com:80")
 
 	type innerTestResult struct {
 		connectDuration, sendDuration, responseDuration, totalLatency time.Duration
 	}
 
-	var testFunc = func(client proxyclient.ProxyClient) (ret innerTestResult, err error) {
+	var testFunc = func() (ret innerTestResult, err error) {
 		start := time.Now()
-		c, err := client.Dial("tcp", testHost)
+		ctx, cancel := context.WithTimeout(context.Background(), DefaultTestTimeout)
+		defer cancel()
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://www.baidu.com", nil)
 		if err != nil {
-			err = ErrConnectFailed
-			return
+			return ret, err
 		}
-		connectedTime := time.Now()
-		ret.connectDuration = connectedTime.Sub(start)
-
-		_, err = io.WriteString(c, fmt.Sprintf("GET / HTTP/1.0\r\nHOST:%s\r\n\r\n", testHost))
+		proxyUrl, err := url.Parse(address)
+		httpClient := &http.Client{Transport: &http.Transport{Proxy: http.ProxyURL(proxyUrl)}}
+		httpClient.Timeout = DefaultTestTimeout
+		resp, err := httpClient.Do(req)
 		if err != nil {
-			err = ErrSendDataFailed
-			return
+			return ret, dt.ErrSendDataFailed
+		}
+		if resp.StatusCode/100 != 2 {
+			return ret, errors.Errorf(resp.Status)
 		}
 		sentTime := time.Now()
-		ret.sendDuration = sentTime.Sub(connectedTime)
-
-		b, err := ioutil.ReadAll(c)
+		ret.sendDuration = start.Sub(sentTime)
+		b, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
-			err = ErrReadDataFailed
+			err = dt.ErrReadDataFailed
 			return
 		}
 		finishedTime := time.Now()
 		ret.responseDuration = finishedTime.Sub(sentTime)
 		if len(b) == 0 {
-			err = ErrEmptyResponse
+			err = dt.ErrEmptyResponse
 			return
 		}
 		ret.totalLatency = finishedTime.Sub(start)
 		return
 	}
 	for i := 0; i < num; i++ {
-		middleResult, err := testFunc(client)
+		middleResult, err := testFunc()
 		if err != nil {
 			ret.ErrSummary[err] += 1
 			ret.FailedNum += 1
@@ -140,4 +141,26 @@ func Test(address string, num int) (ret *TestResult, err error) {
 	}
 
 	return ret, nil
+}
+
+func RandServer(db *model.DB) (ret *model.Proxy, err error) {
+	var count int
+	scope := db.Where("latency > 0")
+	if err := scope.Model(&model.Proxy{}).Count(&count).Error; err != nil {
+		log.Error(err)
+		return nil, errors.Wrap(err, "count failed")
+	}
+	if count == 0 {
+		return nil, dt.ErrNotFound
+	}
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	offset := r.Intn(count)
+	var out model.Proxy
+	if err := scope.Offset(offset).First(&out).Error; err != nil {
+		if !model.IsErrNoDataInDb(err) {
+			log.Error(err)
+			return nil, err
+		}
+	}
+	return &out, nil
 }
