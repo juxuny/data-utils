@@ -1,17 +1,19 @@
 package proxy
 
 import (
-	"context"
 	"fmt"
+	"github.com/gamexg/proxyclient"
+	"github.com/juxuny/data-utils/global_key"
 	"github.com/juxuny/data-utils/log"
 	"github.com/juxuny/data-utils/model"
 	"github.com/juxuny/data-utils/proxy/dt"
+	"github.com/juxuny/env"
 	"github.com/pkg/errors"
 	"golang.org/x/net/proxy"
+	"io"
 	"io/ioutil"
 	"math/rand"
 	"net/http"
-	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -73,40 +75,36 @@ const DefaultTestTimeout = time.Second * 10
 
 // address: proxy address, e.g socks5://user:pass@127.0.0.1:1080
 func Test(address string, num int) (ret *TestResult, err error) {
-	ret = &TestResult{
-		ErrSummary: make(map[error]int),
+	ret = &TestResult{}
+	client, err := proxyclient.NewProxyClient(address)
+	if err != nil {
+		return nil, errors.Wrap(err, "create proxy client failed")
 	}
-	//client, err := proxyclient.NewProxyClient(address)
-	//if err != nil {
-	//	return nil, errors.Wrap(err, "create proxy client failed")
-	//}
-	//testHost := env.GetString(global_key.EnvKey.TestHost, "www.baidu.com:80")
+	testHost := env.GetString(global_key.EnvKey.TestHost, "www.baidu.com:80")
 
 	type innerTestResult struct {
 		connectDuration, sendDuration, responseDuration, totalLatency time.Duration
 	}
 
-	var testFunc = func() (ret innerTestResult, err error) {
+	var testFunc = func(client proxyclient.ProxyClient) (ret innerTestResult, err error) {
 		start := time.Now()
-		ctx, cancel := context.WithTimeout(context.Background(), DefaultTestTimeout)
-		defer cancel()
-		req, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://www.baidu.com", nil)
+		c, err := client.Dial("tcp", testHost)
 		if err != nil {
-			return ret, err
+			err = dt.ErrConnectFailed
+			return
 		}
-		proxyUrl, err := url.Parse(address)
-		httpClient := &http.Client{Transport: &http.Transport{Proxy: http.ProxyURL(proxyUrl)}}
-		httpClient.Timeout = DefaultTestTimeout
-		resp, err := httpClient.Do(req)
+		connectedTime := time.Now()
+		ret.connectDuration = connectedTime.Sub(start)
+
+		_, err = io.WriteString(c, fmt.Sprintf("GET / HTTP/1.0\r\nHOST:%s\r\n\r\n", testHost))
 		if err != nil {
-			return ret, dt.ErrSendDataFailed
-		}
-		if resp.StatusCode/100 != 2 {
-			return ret, errors.Errorf(resp.Status)
+			err = dt.ErrSendDataFailed
+			return
 		}
 		sentTime := time.Now()
-		ret.sendDuration = start.Sub(sentTime)
-		b, err := ioutil.ReadAll(resp.Body)
+		ret.sendDuration = sentTime.Sub(connectedTime)
+
+		b, err := ioutil.ReadAll(c)
 		if err != nil {
 			err = dt.ErrReadDataFailed
 			return
@@ -121,7 +119,7 @@ func Test(address string, num int) (ret *TestResult, err error) {
 		return
 	}
 	for i := 0; i < num; i++ {
-		middleResult, err := testFunc()
+		middleResult, err := testFunc(client)
 		if err != nil {
 			ret.ErrSummary[err] += 1
 			ret.FailedNum += 1
