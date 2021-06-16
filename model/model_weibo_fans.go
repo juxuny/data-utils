@@ -12,3 +12,7 @@ type WeiboFans struct {
 	AllowAllActMsg bool       `json:"allow_all_act_msg"`
 	CreatedAt      *time.Time `json:"created_at" gorm:"TYPE:TIMESTAMP"`
 }
+
+func (WeiboFans) TableName() string {
+	return "weibo_fans"
+}

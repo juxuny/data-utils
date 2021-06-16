@@ -71,7 +71,7 @@ func (t *friendshipsParser) saveFriendships(currentUid int64, fans FansVo) (err 
 			}
 		}
 	} else {
-		if err := t.db.Where("uid = ? AND fans_id = ?", currentUid, fans.Id).Updates(&fans.WeiboFans).Error; err != nil {
+		if err := t.db.Table(model.WeiboFans{}.TableName()).Where("uid = ? AND fans_id = ?", currentUid, fans.Id).Updates(&fans.WeiboFans).Error; err != nil {
 			log.Error(err)
 		}
 	}
@@ -115,19 +115,22 @@ func (t *friendshipsParser) Parse(metaData MetaData) (jobList data_utils.JobList
 	}
 
 	values := parsedUrl.Query()
-	pageSize := len(resp.Users)
-	if values.Get("page") == "1" {
-		totalPageNum := resp.TotalNumber / int64(pageSize)
-		for i := int64(2); i <= totalPageNum; i++ {
-			values.Set("page", fmt.Sprintf("%d", i))
-			newMetaData := MetaData{
-				Url: fmt.Sprintf("%s?%s", "https://weibo.com/ajax/friendships/friends", values.Encode()),
-			}
-			jobList = append(jobList, data_utils.Job{
-				JobType:  model.JobTypeWeibo,
-				MetaData: newMetaData.Encode(),
-			})
+	page, err := strconv.ParseInt(values.Get("page"), 10, 64)
+	if err != nil {
+		log.Error(err)
+		page = 1
+	} else {
+		page += 1
+	}
+	if resp.NextCursor > 0 {
+		values.Set("page", fmt.Sprintf("%d", page))
+		newMetaData := MetaData{
+			Url: fmt.Sprintf("%s?%s", "https://weibo.com/ajax/friendships/friends", values.Encode()),
 		}
+		jobList = append(jobList, data_utils.Job{
+			JobType:  model.JobTypeWeibo,
+			MetaData: newMetaData.Encode(),
+		})
 	}
 	for _, u := range resp.Users {
 		log.Debug(u.Id)

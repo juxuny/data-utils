@@ -65,3 +65,7 @@ type WeiboUser struct {
 	UserAbilityExtend int64      `json:"user_ability_extend"`
 	BrandAccount      int64      `json:"brand_account"`
 }
+
+func (WeiboUser) TableName() string {
+	return "weibo_user"
+}
