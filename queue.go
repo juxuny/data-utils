@@ -4,6 +4,7 @@ import (
 	"github.com/juxuny/data-utils/log"
 	"github.com/juxuny/data-utils/model"
 	"github.com/pkg/errors"
+	"math/rand"
 	"runtime/debug"
 	"time"
 )
@@ -31,6 +32,7 @@ type QueueConfig struct {
 	DriverType QueueDriverType `json:"driver_type"`
 	DbConfig   model.Config
 	BatchSize  int
+	RandDelay  time.Duration `json:"rand_delay"`
 }
 
 type queue struct {
@@ -117,7 +119,11 @@ func (t *queue) StartDaemon() error {
 				}
 			}
 		}
-		time.Sleep(time.Second)
+		r := rand.New(rand.NewSource(time.Now().UnixNano()))
+		sleepTime := t.config.RandDelay + time.Duration(r.Intn(5))*time.Second
+		log.Infof("sleeping... %v", sleepTime)
+
+		time.Sleep(sleepTime)
 	}
 }
 

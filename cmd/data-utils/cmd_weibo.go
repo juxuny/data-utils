@@ -6,31 +6,16 @@ import (
 	"github.com/juxuny/data-utils/log"
 	"github.com/juxuny/data-utils/model"
 	"github.com/spf13/cobra"
+	"time"
 )
 
 var weiboFlag = struct {
 	StartUrl  string
 	UseEnv    bool
-	DbHost    string
-	DbPort    int
-	DbName    string
-	DbUser    string
-	DbPwd     string
 	Driver    string
 	BatchSize int
+	RandDelay int
 }{}
-
-func getWeiboDbConfigFromCommandLineArgs() model.Config {
-	config := model.Config{
-		DbHost:     weiboFlag.DbHost,
-		DbPort:     weiboFlag.DbPort,
-		DbUser:     weiboFlag.DbUser,
-		DbPassword: weiboFlag.DbPwd,
-		DbName:     weiboFlag.DbName,
-		DbDebug:    globalFlag.Verbose,
-	}
-	return config
-}
 
 var weiboCmd = &cobra.Command{
 	Use:   "weibo",
@@ -44,8 +29,9 @@ var weiboCmd = &cobra.Command{
 				log.Fatal(err)
 			}
 		} else {
-			config.DbConfig = getWeiboDbConfigFromCommandLineArgs()
+			config.DbConfig = getDbConfigFromCommandLineArgs()
 		}
+		config.RandDelay = time.Duration(weiboFlag.RandDelay) * time.Second
 		config.BatchSize = weiboFlag.BatchSize
 		config.DriverType = data_utils.QueueDriverType(weiboFlag.Driver)
 		queue := data_utils.NewQueue(config)
@@ -71,12 +57,6 @@ func init() {
 	weiboCmd.PersistentFlags().BoolVarP(&weiboFlag.UseEnv, "use-env", "e", false, "get arguments from environment variables")
 	weiboCmd.PersistentFlags().StringVar(&weiboFlag.Driver, "driver", data_utils.QueueDriverTypeMysql.ToString(), "queue driver")
 	weiboCmd.PersistentFlags().IntVar(&weiboFlag.BatchSize, "batch-size", 1, "batch size")
-
-	// database
-	weiboCmd.PersistentFlags().StringVar(&weiboFlag.DbHost, "db-host", "127.0.0.1", "database host")
-	weiboCmd.PersistentFlags().IntVar(&weiboFlag.DbPort, "db-port", 3306, "database port")
-	weiboCmd.PersistentFlags().StringVar(&weiboFlag.DbUser, "db-user", "root", "user")
-	weiboCmd.PersistentFlags().StringVar(&weiboFlag.DbPwd, "db-pwd", "", "password for database")
-	weiboCmd.PersistentFlags().StringVar(&weiboFlag.DbName, "db-name", "", "database schema name")
+	weiboCmd.PersistentFlags().IntVar(&weiboFlag.RandDelay, "rand-delay", 5, "random delay in seconds")
 	rootCmd.AddCommand(weiboCmd)
 }

@@ -5,6 +5,7 @@ import (
 	data_utils "github.com/juxuny/data-utils"
 	"github.com/juxuny/data-utils/log"
 	"github.com/juxuny/data-utils/model"
+	"github.com/pkg/errors"
 )
 
 type jobHandler struct {
@@ -22,7 +23,32 @@ func (j *jobHandler) ParseMetaData(data string) error {
 
 func (j *jobHandler) Run() (data_utils.JobList, error) {
 	log.Info(j.metaData.Url)
-	return nil, nil
+	var ret = make(data_utils.JobList, 0)
+	db, err := model.Open(j.config.DbConfig)
+	if err != nil {
+		log.Error(err)
+		return nil, errors.Wrap(err, "connect database failed")
+	}
+	defer func() {
+		_ = db.Close()
+	}()
+	for parser := range parserMap {
+		if parser.CheckValid(j.metaData) {
+			if err := parser.Prepare(db); err != nil {
+				log.Errorf("prepare parser failed: %v", err)
+				continue
+			}
+			list, err := parser.Parse(j.metaData)
+			if err != nil {
+				log.Error(err)
+				continue
+			}
+			if len(list) > 0 {
+				ret = append(ret, list...)
+			}
+		}
+	}
+	return ret, nil
 }
 
 func NewJobHandler(config data_utils.QueueConfig) *jobHandler {
