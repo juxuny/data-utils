@@ -93,7 +93,7 @@ func (t *friendshipsParser) Parse(metaData MetaData) (jobList data_utils.JobList
 	}
 
 	var header = http.Header{}
-	cookie := t.cookieManager.GetCookies("")
+	cookie := t.cookieManager.GetCookies(parsedUrl.Host)
 	header.Add("Cookie", cookie)
 	var resp FriendshipsResp
 	if err := curl.GetJson(metaData.Url, &resp, header); err != nil {
@@ -134,13 +134,15 @@ func (t *friendshipsParser) Parse(metaData MetaData) (jobList data_utils.JobList
 	}
 	for _, u := range resp.Users {
 		log.Debug(u.Id)
-		parsedUrl.Query().Set("uid", u.IdStr)
-		parsedUrl.Query().Set("page", "1")
-		newMetaData := MetaData{Url: parsedUrl.String()}
-		jobList = append(jobList, data_utils.Job{
-			JobType:  model.JobTypeWeibo,
-			MetaData: newMetaData.Encode(),
-		})
+		if u.FollowersCount > 0 {
+			parsedUrl.Query().Set("uid", u.IdStr)
+			parsedUrl.Query().Set("page", "1")
+			newMetaData := MetaData{Url: parsedUrl.String()}
+			jobList = append(jobList, data_utils.Job{
+				JobType:  model.JobTypeWeibo,
+				MetaData: newMetaData.Encode(),
+			})
+		}
 	}
 	return
 }

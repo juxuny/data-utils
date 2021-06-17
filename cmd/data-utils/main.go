@@ -23,10 +23,13 @@ var globalFlag = struct {
 	DbName string
 	DbUser string
 	DbPwd  string
+
+	CacheDir string
 }{}
 
 func initGlobalFlag(cmd *cobra.Command) {
 	cmd.PersistentFlags().BoolVarP(&globalFlag.Verbose, "verbose", "v", false, "display debug output")
+	cmd.PersistentFlags().StringVar(&globalFlag.CacheDir, "cache", "tmp/cache", "cache data directory")
 
 	// database
 	cmd.PersistentFlags().StringVar(&globalFlag.DbHost, "db-host", "127.0.0.1", "database host")

@@ -21,6 +21,7 @@ var weiboCmd = &cobra.Command{
 	Use:   "weibo",
 	Short: "weibo",
 	Run: func(cmd *cobra.Command, args []string) {
+		weibo.SetCacheDir(globalFlag.CacheDir)
 		var err error
 		var config data_utils.QueueConfig
 		if weiboFlag.UseEnv {
