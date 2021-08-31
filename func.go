@@ -37,3 +37,23 @@ func ToJson(v interface{}) string {
 	data, _ := json.Marshal(v)
 	return string(data)
 }
+
+func StringFilter(l []string, filter ...func(l string) bool) []string {
+	var isOk = func(data string, filters []func(l string) bool) bool {
+		if len(filters) > 0 {
+			for _, f := range filters {
+				if !f(data) {
+					return false
+				}
+			}
+		}
+		return true
+	}
+	var ret = make([]string, 0)
+	for _, item := range l {
+		if isOk(item, filter) {
+			ret = append(ret, item)
+		}
+	}
+	return ret
+}
