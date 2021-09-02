@@ -2,6 +2,7 @@ package srt
 
 import (
 	"fmt"
+	"github.com/juxuny/data-utils/lib"
 	"github.com/pkg/errors"
 	"strings"
 )
@@ -191,7 +192,7 @@ func (t *segment) Parse() (ret *Node, err error) {
 		ret.TagName = list[0]
 		var keyName []byte
 		for i := 0; i < len(list); i++ {
-			if isQuoted(list[i]) {
+			if lib.IsQuoted(list[i]) {
 				if len(keyName) == 0 {
 					return nil, errors.Errorf("invalid tag attr: %s", string(t.Content))
 				}

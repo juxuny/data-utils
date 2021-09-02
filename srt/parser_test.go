@@ -16,5 +16,17 @@ func TestParse(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Log(blocks)
+	for _, b := range blocks {
+		t.Log(b.String())
+	}
+}
+
+func TestParseInterval(t *testing.T) {
+	input := "00:00:37,700 --> 00:00:41,120"
+	start, end, err := parseInterval(input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(start.Format("15:04:05.000"))
+	t.Log(end.Format("15:04:05.000"))
 }

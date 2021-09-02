@@ -1,23 +1,47 @@
 package main
 
-import "github.com/spf13/cobra"
+import (
+	"github.com/juxuny/data-utils/log"
+	"github.com/juxuny/data-utils/srt"
+	"github.com/pkg/errors"
+	"github.com/spf13/cobra"
+	"io/ioutil"
+	"os"
+)
 
 var globalFlag = struct {
 	Verbose bool
-	DbHost  string
-	DbPort  int
-	DbUser  string
-	DbPwd   string
-	DbName  string
 }{}
 
 func initGlobalFlag(cmd *cobra.Command) {
 	cmd.PersistentFlags().BoolVarP(&globalFlag.Verbose, "verbose", "v", false, "display debug output")
 
-	// database
-	cmd.PersistentFlags().StringVar(&globalFlag.DbHost, "db-host", "127.0.0.1", "database host")
-	cmd.PersistentFlags().IntVar(&globalFlag.DbPort, "db-port", 3306, "database port")
-	cmd.PersistentFlags().StringVar(&globalFlag.DbUser, "db-user", "root", "user")
-	cmd.PersistentFlags().StringVar(&globalFlag.DbPwd, "db-pwd", "", "password for database")
-	cmd.PersistentFlags().StringVar(&globalFlag.DbName, "db-name", "", "database schema name")
+}
+
+// 转换字幕
+func convertSrt(inFile, outFile string) error {
+	inData, err := ioutil.ReadFile(inFile)
+	if err != nil {
+		log.Debug(err)
+		return errors.Wrap(err, "convert srt failed")
+	}
+	blocks, err := srt.Parse(inData)
+	if err != nil {
+		log.Debug(err)
+		return errors.Wrap(err, "convert srt failed")
+	}
+
+	out, err := os.Create(outFile)
+	if err != nil {
+		log.Debug(err)
+		return errors.Wrap(err, "create out srt failed")
+	}
+	defer out.Close()
+	for _, b := range blocks {
+		if _, err := out.WriteString(b.String() + "\n\n"); err != nil {
+			break
+		}
+	}
+
+	return nil
 }

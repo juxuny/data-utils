@@ -8,6 +8,7 @@ require (
 	github.com/gamexg/proxyclient v0.0.0-20210207161252-499908056324
 	github.com/ghodss/yaml v1.0.0
 	github.com/jinzhu/gorm v1.9.16
+	github.com/jinzhu/now v1.0.1
 	github.com/juxuny/env v1.1.0
 	github.com/juxuny/gomail v0.0.1
 	github.com/juxuny/log-server v0.1.0
