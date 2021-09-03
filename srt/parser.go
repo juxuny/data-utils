@@ -14,7 +14,7 @@ type Block struct {
 	Id        int64
 	StartTime time.Time
 	EndTime   time.Time
-	Subtitle  []*Node
+	Subtitle  NodeList
 }
 
 func (t Block) String() string {

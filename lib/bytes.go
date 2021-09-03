@@ -1,5 +1,21 @@
 package lib
 
+type _Byte struct{}
+
+var Byte = _Byte{}
+
+func (_Byte) CompareSlice(a, b []byte) (isEqual bool) {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := 0; i < len(a) && i < len(b); i++ {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
 func Contains(data []byte, charset string) bool {
 	set := map[byte]bool{}
 	for i := range charset {
@@ -13,6 +29,7 @@ func Contains(data []byte, charset string) bool {
 	return false
 }
 
+// charset 里任意一个字符都会分割
 func SplitByCharset(data []byte, charset string) [][]byte {
 	splitter := map[byte]bool{}
 	for i := range charset {

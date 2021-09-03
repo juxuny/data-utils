@@ -69,6 +69,32 @@ func (t *Node) String() string {
 	return ""
 }
 
+func (t *Node) forEach(f func(n *Node) bool) bool {
+	if f(t) {
+		return true
+	}
+	for _, c := range t.Children {
+		if c.forEach(f) {
+			return true
+		}
+	}
+	return false
+}
+
+func (t *Node) ForEach(f func(n *Node) (end bool)) {
+	t.forEach(f)
+}
+
+type NodeList []*Node
+
+func (t NodeList) ForEach(f func(n *Node) bool) {
+	for _, n := range t {
+		if n.forEach(f) {
+			return
+		}
+	}
+}
+
 type SegmentType int8
 
 const (
