@@ -92,7 +92,8 @@ func parseBlock(blockData string) (Block, error) {
 		}
 	}
 	if len(lines) > 2 {
-		ret.Subtitle, err = ParseSubtitle([]byte(lines[2]))
+		subtitleData := strings.Join(lines[2:], "\n")
+		ret.Subtitle, err = ParseSubtitle([]byte(subtitleData))
 		if err != nil {
 			return ret, errors.Wrapf(err, "parse xml failed, id=%v", ret.Id)
 		}

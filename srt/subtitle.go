@@ -69,7 +69,7 @@ func (t *Node) String() string {
 	return ""
 }
 
-func (t *Node) forEach(f func(n *Node) bool) bool {
+func (t *Node) forEach(f IfNeedStopChecker) bool {
 	if f(t) {
 		return true
 	}
@@ -81,13 +81,15 @@ func (t *Node) forEach(f func(n *Node) bool) bool {
 	return false
 }
 
-func (t *Node) ForEach(f func(n *Node) (end bool)) {
+func (t *Node) ForEach(f IfNeedStopChecker) {
 	t.forEach(f)
 }
 
 type NodeList []*Node
 
-func (t NodeList) ForEach(f func(n *Node) bool) {
+type IfNeedStopChecker func(n *Node) bool
+
+func (t NodeList) ForEach(f IfNeedStopChecker) {
 	for _, n := range t {
 		if n.forEach(f) {
 			return

@@ -5,6 +5,7 @@ import (
 	"github.com/juxuny/data-utils/lib"
 	"github.com/juxuny/data-utils/log"
 	"github.com/spf13/cobra"
+	"os"
 )
 
 var splitFlag = struct {
@@ -15,11 +16,28 @@ var splitFlag = struct {
 	HighlightColor string
 	FontFace       string
 	FontSize       int
+	GlobalFontSize int
+	ExpandSeconds  int
+	InputFile      string
+	OutExt         string
+	AutoRun        bool
 }{}
+
+func checkArgument() {
+	if splitFlag.InputFile == "" {
+		log.Fatal("missing --input -i argument")
+	}
+	if stat, err := os.Stat(splitFlag.InputFile); os.IsNotExist(err) {
+		log.Fatal("input file not found:", splitFlag.InputFile)
+	} else if stat.IsDir() {
+		log.Fatal("input file is a directory")
+	}
+}
 
 var splitCmd = &cobra.Command{
 	Use: "split",
 	Run: func(cmd *cobra.Command, args []string) {
+		checkArgument()
 		dictCET4, err := dict.LoadDict(splitFlag.DataFileCet4)
 		if err != nil {
 			log.Fatal(err)
@@ -46,6 +64,13 @@ var splitCmd = &cobra.Command{
 		}); err != nil {
 			log.Fatal(err)
 		}
+
+		// auto run split script
+		if splitFlag.AutoRun {
+			if err := runCommand("bash", getSplitScriptFileName()); err != nil {
+				log.Fatal(err)
+			}
+		}
 	},
 }
 
@@ -57,7 +82,12 @@ func init() {
 	splitCmd.PersistentFlags().StringVar(&splitFlag.OutSrt, "out-srt", "tmp/eng.converted.srt", "output subtitle file .srt")
 	splitCmd.PersistentFlags().StringVar(&splitFlag.HighlightColor, "color", "#f7db9f", "highlight color e.g #fff0cf")
 	splitCmd.PersistentFlags().StringVar(&splitFlag.FontFace, "face", "Cronos Pro Light", "font face. e.g Cronos Pro Light")
-	splitCmd.PersistentFlags().IntVar(&splitFlag.FontSize, "size", 48, "font size. 48")
+	splitCmd.PersistentFlags().IntVar(&splitFlag.FontSize, "size", 14, "font size. 48")
+	splitCmd.PersistentFlags().IntVar(&splitFlag.ExpandSeconds, "expand", 10, "expand seconds")
+	splitCmd.PersistentFlags().StringVarP(&splitFlag.InputFile, "input", "i", "", "input video file")
+	splitCmd.PersistentFlags().StringVar(&splitFlag.OutExt, "ext", "mp4", "output video type")
+	splitCmd.PersistentFlags().IntVar(&splitFlag.GlobalFontSize, "global-size", 12, "global font size")
+	splitCmd.PersistentFlags().BoolVar(&splitFlag.AutoRun, "auto-run", true, "auto run the split script")
 
 	rootCmd.AddCommand(splitCmd)
 }

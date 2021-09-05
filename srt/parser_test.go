@@ -11,6 +11,11 @@ func TestParse(t *testing.T) {
 00:00:41,200 --> 00:00:44,370
 <font face="Cronos Pro Light" size="38" color="#fff0cf"><i>whose kung fu skills</i>
 <i>were the stuff of legend.</i></font>
+
+12
+00:01:27,330 --> 00:01:30,090
+<font face="Cronos Pro Light" size="38" color="#fff0cf">-And attractive.
+-How can we repay you?</font>
 `
 	blocks, err := Parse([]byte(input))
 	if err != nil {
