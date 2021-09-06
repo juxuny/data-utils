@@ -1,12 +1,6 @@
 package dict
 
-import (
-	"image"
-	"image/color"
-	"math"
-	"testing"
-)
-
+/*
 func TestNewCanvas(t *testing.T) {
 	c := NewCanvas(500, 300)
 	c.SetBackgroundColor(image.NewUniform(color.Black))
@@ -42,3 +36,5 @@ func TestGenerateWordImage(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+*/
