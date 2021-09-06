@@ -174,6 +174,49 @@ func generateSplitScript(srtFile string, data []*SplitConfigData) error {
 	return nil
 }
 
+// 生成重点单词汇总图片
+func generateCoverImage(dictData *dict.Dict) error {
+	splitDataFile := path.Dir(splitFlag.OutSrt) + string(os.PathSeparator) + path.Base(splitFlag.OutSrt) + ".split.json"
+	jsonData, err := ioutil.ReadFile(splitDataFile)
+	if err != nil {
+		return errors.Wrap(err, "load split json failed")
+	}
+	var splitData []*SplitConfigData
+	if err := json.Unmarshal(jsonData, &splitData); err != nil {
+		return errors.Wrap(err, "parse split json failed")
+	}
+	ext := path.Ext(splitFlag.InputFile)
+	outDir := strings.TrimRight(splitFlag.InputFile, ext) + ".d"
+	fontData, err := ioutil.ReadFile(splitFlag.FontFile)
+	if err != nil {
+		return errors.Wrap(err, "read font file failed")
+	}
+	for _, d := range splitData {
+		words := make([]dict.Word, 0)
+		for w := range d.Words {
+			if v, b := dictData.Data[w]; b {
+				words = append(words, v)
+			}
+		}
+		outImg := path.Join(outDir, strings.TrimRight(path.Base(splitFlag.InputFile), ext)+fmt.Sprintf(".%d.begin", d.Id)+".jpg")
+		log.Info("generate cover:", outImg)
+		if err := dict.GenerateWordImage(outImg, "", words, &dict.Options{
+			FontSize:   float64(splitFlag.CoverFontSize),
+			FontColor:  splitFlag.CoverFontColor,
+			FontBytes:  fontData,
+			Width:      splitFlag.Width,
+			Height:     splitFlag.Height,
+			ImageType:  dict.ImageTypeJpeg,
+			Background: splitFlag.CoverBg,
+			Padding:    dict.Padding{Left: splitFlag.StartX, Top: splitFlag.StartY},
+		}); err != nil {
+			log.Error(err)
+			return errors.Wrap(err, "generate image failed")
+		}
+	}
+	return nil
+}
+
 // 转换字幕
 func convertSrt(inFile, outFile string, filter CetFilter) error {
 	inData, err := ioutil.ReadFile(inFile)
