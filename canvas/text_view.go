@@ -37,10 +37,18 @@ func (t *TextView) Draw(img *image.RGBA, vector ...image.Point) error {
 }
 
 func (t *TextView) getTextHeight() int {
-	scale := float64(t.size) / float64(t.painter.Font.FUnitsPerEm())
-	bounds := t.painter.Font.Bounds(fixed.Int26_6(t.painter.Font.FUnitsPerEm()))
-	height := int(float64(bounds.Max.Y-bounds.Min.Y) * scale)
-	return height
+	//scale := float64(t.size) / float64(t.painter.Font.FUnitsPerEm())
+	//bounds := t.painter.Font.Bounds(fixed.Int26_6(t.painter.Font.FUnitsPerEm()))
+	//height := int(float64(bounds.Max.Y-bounds.Min.Y) * scale)
+	fc := truetype.NewFace(t.painter.Font, &truetype.Options{
+		Size:    float64(t.size),
+		DPI:     72,
+		Hinting: font.HintingNone,
+	})
+	m := fc.Metrics()
+	//log.Debug(m.Descent.Ceil(), m.Ascent.Ceil(), m.Height.Ceil(), t.size)
+	return m.Height.Ceil() + m.Descent.Ceil()
+	//return height
 }
 
 func (t *TextView) Measure() image.Rectangle {
