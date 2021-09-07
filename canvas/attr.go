@@ -16,6 +16,7 @@ var AttrKey = struct {
 	Src             string
 	ImageType       string
 	Text            string
+	CenterType      string
 }{}
 
 func init() {

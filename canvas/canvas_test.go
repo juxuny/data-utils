@@ -1,6 +1,7 @@
 package dict
 
 import (
+	"image"
 	"testing"
 )
 
@@ -14,12 +15,18 @@ func TestNewCanvas(t *testing.T) {
 	lv := CreateListView(0, 0, []View{
 		CreateImageView("tmp/cover.jpeg", 1920, 810, ImageTypeJpeg),
 		//CreateImageView("tmp/cover.jpeg", 1920, 810, ImageTypeJpeg),
-		CreateTextView("Hello\nWorld !!!\nMy name is Juxuny Wu", "tmp/Cronos-Pro-Bold_12435.ttf", 32, "#FFFFFF"),
-		CreateTextView("Hello\nWorld !!!\nMy name is Juxuny Wu", "tmp/Cronos-Pro-Bold_12435.ttf", 32, "#FFFFFF"),
-		CreateTextView("Hello\nWorld !!!\nMy name is Juxuny Wu", "tmp/Cronos-Pro-Bold_12435.ttf", 32, "#00FFFF"),
-		CreateTextView("Hello\nWorld !!!\nMy name is Juxuny Wu", "tmp/Cronos-Pro-Bold_12435.ttf", 32, "#FFFFFF"),
-		CreateTextView("Hello\nWorld !!!", "tmp/Cronos-Pro-Bold_12435.ttf", 32, "#FFFFFF"),
-		CreateTextView("Hello\nWorld !!!", "tmp/Cronos-Pro-Bold_12435.ttf", 32, "#FFFFFF"),
+		CreateCenterLayout(CenterTypeAll, image.Point{X: 0, Y: 0}, 1920, 810,
+			CreateBox(image.Rect(0, 0, 100, 100),
+				CreateListView(0, 0, []View{
+					CreateTextView("Hello\nWorld !!!\nMy name is Juxuny Wu", "tmp/Cronos-Pro-Bold_12435.ttf", 32, "#FFFFFF"),
+					CreateTextView("Hello\nWorld !!!\nMy name is Juxuny Wu", "tmp/Cronos-Pro-Bold_12435.ttf", 32, "#FFFFFF"),
+					CreateTextView("Hello\nWorld !!!\nMy name is Juxuny Wu", "tmp/Cronos-Pro-Bold_12435.ttf", 32, "#00FFFF"),
+					CreateTextView("Hello\nWorld !!!\nMy name is Juxuny Wu", "tmp/Cronos-Pro-Bold_12435.ttf", 32, "#FFFFFF"),
+					CreateTextView("Hello\nWorld !!!", "tmp/Cronos-Pro-Bold_12435.ttf", 32, "#FFFFFF"),
+					CreateTextView("Hello\nWorld !!!", "tmp/Cronos-Pro-Bold_12435.ttf", 32, "#FFFFFF"),
+				}),
+			),
+		),
 	})
 
 	if err := canvas.Draw(lv); err != nil {
