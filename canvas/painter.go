@@ -11,6 +11,7 @@ import (
 type Painter struct {
 	Context  *freetype.Context
 	FontSize float64
+	Font     *truetype.Font
 }
 
 func NewPainter() *Painter {
@@ -26,20 +27,21 @@ func (t *Painter) SetFont(fontFile string) error {
 		return errors.Wrap(err, "read font file failed")
 	}
 	//f, err := sfnt.Parse(fontBytes)
-	f, err := truetype.Parse(fontBytes)
+	t.Font, err = truetype.Parse(fontBytes)
 	if err != nil {
 		return errors.Wrap(err, "parse font failed")
 	}
-	t.Context.SetFont(f)
+	t.Context.SetFont(t.Font)
 	return nil
 }
 
 func (t *Painter) SetFontByFontData(fontBytes []byte) error {
-	f, err := truetype.Parse(fontBytes)
+	var err error
+	t.Font, err = truetype.Parse(fontBytes)
 	if err != nil {
 		return errors.Wrap(err, "parse font data failed")
 	}
-	t.Context.SetFont(f)
+	t.Context.SetFont(t.Font)
 	return nil
 }
 

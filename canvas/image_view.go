@@ -25,7 +25,7 @@ func (t *ImageView) Draw(img *image.RGBA, vector ...image.Point) error {
 		start.X += vector[0].X
 		start.Y += vector[0].Y
 	}
-	draw.Draw(img, image.Rect(start.X, start.Y, start.X+t.Rect.Dx(), start.Y+t.Rect.Dy()), t.img, image.ZP, draw.Src)
+	draw.Draw(img, image.Rect(start.X, start.Y, start.X+t.Rect.Dx(), start.Y+t.Rect.Dy()), t.img, image.Point{}, draw.Over)
 	return nil
 }
 

@@ -19,7 +19,8 @@ type Canvas struct {
 }
 
 func NewCanvas(width, height int) (c *Canvas) {
-	background := image.NewRGBA(image.Rect(0, 0, width, height))
+	rect := image.Rect(0, 0, width, height)
+	background := image.NewRGBA(rect)
 	draw.Draw(background, background.Bounds(), image.Transparent, image.ZP, draw.Src)
 	return &Canvas{
 		Background: background,

@@ -8,9 +8,11 @@ import (
 type ViewType string
 
 const (
-	ViewTypeImageView = ViewType("image-view")
-	ViewTypeListView  = ViewType("list-view")
-	ViewTypeTextView  = ViewType("text-view")
+	ViewTypeImageView    = ViewType("image-view")
+	ViewTypeListView     = ViewType("list-view")
+	ViewTypeTextView     = ViewType("text-view")
+	ViewTypeBox          = ViewType("box")
+	ViewTypeCenterLayout = ViewType("center-layout")
 )
 
 type View interface {

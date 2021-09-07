@@ -3,7 +3,10 @@ package dict
 import (
 	"fmt"
 	"github.com/golang/freetype"
+	"github.com/golang/freetype/truetype"
+	"github.com/juxuny/data-utils/log"
 	"github.com/pkg/errors"
+	"golang.org/x/image/font"
 	"golang.org/x/image/math/fixed"
 	"image"
 	"image/draw"
@@ -32,6 +35,13 @@ func (t *TextView) Draw(img *image.RGBA, vector ...image.Point) error {
 	}
 	draw.Draw(img, image.Rect(start.X, start.Y, start.X+t.Rect.Dx(), start.Y+t.Rect.Dy()), t.background, image.ZP, draw.Src)
 	return nil
+}
+
+func (t *TextView) getTextHeight() int {
+	scale := float64(t.size) / float64(t.painter.Font.FUnitsPerEm())
+	bounds := t.painter.Font.Bounds(fixed.Int26_6(t.painter.Font.FUnitsPerEm()))
+	height := int(float64(bounds.Max.Y-bounds.Min.Y) * scale)
+	return height
 }
 
 func (t *TextView) Measure() image.Rectangle {
@@ -78,13 +88,34 @@ func (t *TextView) Measure() image.Rectangle {
 		t.painter.SetColor(image.NewUniform(c))
 	}
 	t.painter.SetFontSize(float64(t.size))
-	tmp := image.NewRGBA(image.Rect(0, 0, 1080, 1920))
+	//tmp := image.NewRGBA(image.Rect(0, 0, 1080, 1920))
 	top := 0
 	left := 0
-	t.painter.Context.SetClip(tmp.Bounds())
-	t.painter.Context.SetDst(tmp)
 	lines := strings.Split(text, "\n")
 	var pt fixed.Point26_6
+	d := &font.Drawer{
+		Face: truetype.NewFace(t.painter.Font, &truetype.Options{
+			Size:    float64(t.size),
+			DPI:     72,
+			Hinting: font.HintingNone,
+		}),
+	}
+	//measure bound
+	textHeight := t.getTextHeight()
+	t.Rect = image.Rect(0, 0, 0, 0)
+	for _, line := range lines {
+		_, result := d.BoundString(line)
+		//d.Dot.X = fixed.I(0)
+		width := result.Ceil()
+		if width > t.Rect.Max.X {
+			t.Rect.Max.X = width
+		}
+		t.Rect.Max.Y += textHeight
+	}
+	log.Debug(t.Rect.Dx(), t.Rect.Dy())
+	t.background = image.NewRGBA(t.Rect)
+	t.painter.Context.SetClip(t.background.Bounds())
+	t.painter.Context.SetDst(t.background)
 	for _, line := range lines {
 		pt = freetype.Pt(0, top+int(t.painter.Context.PointToFixed(t.painter.FontSize)>>6))
 		pt, err = t.painter.Context.DrawString(line, pt)
@@ -95,11 +126,8 @@ func (t *TextView) Measure() image.Rectangle {
 		if int(pt.X)>>6 > left {
 			left = int(pt.X) >> 6
 		}
-		top += int(t.painter.FontSize)
+		top += textHeight
 	}
-	t.Rect = image.Rect(0, 0, left, top)
-	t.background = image.NewRGBA(t.Rect)
-	draw.Draw(t.background, t.Rect, tmp, image.ZP, draw.Src)
 	return t.Rect
 }
 
