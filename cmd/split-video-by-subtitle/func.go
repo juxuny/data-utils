@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/juxuny/data-utils/canvas"
 	"github.com/juxuny/data-utils/dict"
 	"github.com/juxuny/data-utils/log"
 	"github.com/juxuny/data-utils/srt"
@@ -187,10 +188,6 @@ func generateCoverImage(dictData *dict.Dict) error {
 	}
 	ext := path.Ext(splitFlag.InputFile)
 	outDir := strings.TrimRight(splitFlag.InputFile, ext) + ".d"
-	fontData, err := ioutil.ReadFile(splitFlag.FontFile)
-	if err != nil {
-		return errors.Wrap(err, "read font file failed")
-	}
 	for _, d := range splitData {
 		words := make([]dict.Word, 0)
 		for w := range d.Words {
@@ -200,19 +197,42 @@ func generateCoverImage(dictData *dict.Dict) error {
 		}
 		outImg := path.Join(outDir, strings.TrimRight(path.Base(splitFlag.InputFile), ext)+fmt.Sprintf(".%d.begin", d.Id)+".jpg")
 		log.Info("generate cover:", outImg)
-		if err := dict.GenerateWordImage(outImg, "", words, &dict.Options{
-			FontSize:   float64(splitFlag.CoverFontSize),
-			FontColor:  splitFlag.CoverFontColor,
-			FontBytes:  fontData,
-			Width:      splitFlag.Width,
-			Height:     splitFlag.Height,
-			ImageType:  dict.ImageTypeJpeg,
-			Background: splitFlag.CoverBg,
-			Padding:    dict.Padding{Left: splitFlag.StartX, Top: splitFlag.StartY},
-		}); err != nil {
-			log.Error(err)
-			return errors.Wrap(err, "generate image failed")
+		c := canvas.NewCanvas(750, 1206)
+		if strings.Index(splitFlag.CoverBg, "#") == 0 {
+			if err := c.DrawColor(splitFlag.CoverBg); err != nil {
+				log.Warn(err)
+				continue
+			}
+		} else {
+			coverBgExt := path.Ext(splitFlag.CoverBg)
+			imageType := canvas.ImageTypeJpeg
+			if strings.ToLower(coverBgExt) == ".png" {
+				imageType = canvas.ImageTypePng
+			}
+			bg := canvas.CreateImageView(splitFlag.CoverBg, c.Width, c.Height, imageType)
+			if err := c.Draw(bg); err != nil {
+				return errors.Wrapf(err, "generate cover failed, block id=%d", d.Id)
+			}
 		}
+		lv := canvas.CreateListView(135+50, 380+50, []canvas.View{})
+		for _, w := range words {
+			if err := lv.AppendChild(canvas.CreateTextView(w.Name, splitFlag.FontFile, splitFlag.CoverFontSize, splitFlag.CoverFontColor)); err != nil {
+				log.Warn(err)
+				continue
+			}
+		}
+		if err := c.Draw(lv); err != nil {
+			log.Error(err)
+			return errors.Wrapf(err, "render word failed, block id: %d", d.Id)
+		}
+		if err := c.Save(outImg, canvas.ImageTypeJpeg); err != nil {
+			log.Error(err)
+			return errors.Wrap(err, "save cover img failed: "+outImg)
+		}
+		if d.Id > 7 {
+			break
+		}
+		break
 	}
 	return nil
 }

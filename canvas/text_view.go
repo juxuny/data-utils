@@ -1,10 +1,9 @@
-package dict
+package canvas
 
 import (
 	"fmt"
 	"github.com/golang/freetype"
 	"github.com/golang/freetype/truetype"
-	"github.com/juxuny/data-utils/log"
 	"github.com/pkg/errors"
 	"golang.org/x/image/font"
 	"golang.org/x/image/math/fixed"
@@ -33,7 +32,7 @@ func (t *TextView) Draw(img *image.RGBA, vector ...image.Point) error {
 		start.X += vector[0].X
 		start.Y += vector[0].Y
 	}
-	draw.Draw(img, image.Rect(start.X, start.Y, start.X+t.Rect.Dx(), start.Y+t.Rect.Dy()), t.background, image.ZP, draw.Src)
+	draw.Draw(img, image.Rect(start.X, start.Y, start.X+t.Rect.Dx(), start.Y+t.Rect.Dy()), t.background, image.ZP, draw.Over)
 	return nil
 }
 
@@ -112,7 +111,7 @@ func (t *TextView) Measure() image.Rectangle {
 		}
 		t.Rect.Max.Y += textHeight
 	}
-	log.Debug(t.Rect.Dx(), t.Rect.Dy())
+	//log.Debug(t.Rect.Dx(), t.Rect.Dy())
 	t.background = image.NewRGBA(t.Rect)
 	t.painter.Context.SetClip(t.background.Bounds())
 	t.painter.Context.SetDst(t.background)

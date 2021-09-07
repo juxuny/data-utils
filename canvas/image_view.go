@@ -1,4 +1,4 @@
-package dict
+package canvas
 
 import (
 	"bufio"

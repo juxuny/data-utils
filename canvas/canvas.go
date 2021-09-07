@@ -1,4 +1,4 @@
-package dict
+package canvas
 
 import (
 	"bufio"
@@ -14,8 +14,9 @@ import (
 )
 
 type Canvas struct {
-	Background *image.RGBA
-	Painter    *Painter
+	Background    *image.RGBA
+	Painter       *Painter
+	Width, Height int
 }
 
 func NewCanvas(width, height int) (c *Canvas) {
@@ -23,6 +24,8 @@ func NewCanvas(width, height int) (c *Canvas) {
 	background := image.NewRGBA(rect)
 	draw.Draw(background, background.Bounds(), image.Transparent, image.ZP, draw.Src)
 	return &Canvas{
+		Width:      width,
+		Height:     height,
 		Background: background,
 	}
 }
