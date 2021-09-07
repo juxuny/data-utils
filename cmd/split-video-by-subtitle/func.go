@@ -126,6 +126,7 @@ func expandDuration(data []*SplitConfigData) {
 
 func runCommand(command string, args ...string) error {
 	cmd := exec.Command(command, args...)
+	log.Debug("run command: ", cmd.String())
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Stdin = os.Stdin
@@ -175,6 +176,13 @@ func generateSplitScript(srtFile string, data []*SplitConfigData) error {
 	return nil
 }
 
+func getCoverImageFile(blockId int64) string {
+	ext := path.Ext(splitFlag.InputFile)
+	outDir := strings.TrimRight(splitFlag.InputFile, ext) + ".d"
+	outImg := path.Join(outDir, strings.TrimRight(path.Base(splitFlag.InputFile), ext)+fmt.Sprintf(".%d.begin", blockId)+".jpg")
+	return outImg
+}
+
 // 生成重点单词汇总图片
 func generateCoverImage(dictData *dict.Dict) error {
 	splitDataFile := path.Dir(splitFlag.OutSrt) + string(os.PathSeparator) + path.Base(splitFlag.OutSrt) + ".split.json"
@@ -186,8 +194,8 @@ func generateCoverImage(dictData *dict.Dict) error {
 	if err := json.Unmarshal(jsonData, &splitData); err != nil {
 		return errors.Wrap(err, "parse split json failed")
 	}
-	ext := path.Ext(splitFlag.InputFile)
-	outDir := strings.TrimRight(splitFlag.InputFile, ext) + ".d"
+	//ext := path.Ext(splitFlag.InputFile)
+	//outDir := strings.TrimRight(splitFlag.InputFile, ext) + ".d"
 	for _, d := range splitData {
 		words := make([]dict.Word, 0)
 		for w := range d.Words {
@@ -195,7 +203,7 @@ func generateCoverImage(dictData *dict.Dict) error {
 				words = append(words, v)
 			}
 		}
-		outImg := path.Join(outDir, strings.TrimRight(path.Base(splitFlag.InputFile), ext)+fmt.Sprintf(".%d.begin", d.Id)+".jpg")
+		outImg := getCoverImageFile(d.Id)
 		log.Info("generate cover:", outImg)
 		c := canvas.NewCanvas(750, 1206)
 		if strings.Index(splitFlag.CoverBg, "#") == 0 {
@@ -229,12 +237,21 @@ func generateCoverImage(dictData *dict.Dict) error {
 			log.Error(err)
 			return errors.Wrap(err, "save cover img failed: "+outImg)
 		}
-		if d.Id > 7 {
-			break
+		if err := convertImageToVideo(outImg); err != nil {
+			log.Error(err)
+			return errors.Wrap(err, "convert image to video failed")
 		}
-		break
 	}
 	return nil
+}
+
+func convertImageToVideo(imageFile string) error {
+	ext := path.Ext(imageFile)
+	outVideo := strings.TrimRight(imageFile, ext) + ".mp4"
+	return runCommand("ffmpeg",
+		"-y", "-r", "25", "-loop", "1", "-i", imageFile,
+		"-r", "25", "-t", fmt.Sprintf("%d", splitFlag.CoverDuration), outVideo,
+	)
 }
 
 // 转换字幕

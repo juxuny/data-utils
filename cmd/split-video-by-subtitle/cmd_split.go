@@ -23,12 +23,12 @@ var splitFlag = struct {
 	AutoRun        bool
 	Width          int
 	Height         int
+
 	CoverFontSize  int
 	CoverFontColor string
 	CoverBg        string
 	FontFile       string // 生成封面用的ttf文件
-	StartX         int
-	StartY         int
+	CoverDuration  int    // 封面单词汇总等待时长
 }{}
 
 func checkArgument() {
@@ -113,8 +113,7 @@ func init() {
 	splitCmd.PersistentFlags().StringVar(&splitFlag.FontFile, "ttf", "tmp/No.73ShangShouFenBiTi-2.ttf", "ttf file")
 	splitCmd.PersistentFlags().StringVar(&splitFlag.CoverBg, "bg", "#000000", "cover background color")
 	splitCmd.PersistentFlags().StringVar(&splitFlag.CoverFontColor, "cover-color", "#FFFFFF", "cover font color")
-	splitCmd.PersistentFlags().IntVar(&splitFlag.StartX, "start-x", 1920>>1-450, "top-left point x")
-	splitCmd.PersistentFlags().IntVar(&splitFlag.StartY, "start-y", 140, "top-left point y")
+	splitCmd.PersistentFlags().IntVar(&splitFlag.CoverDuration, "cover-duration", 6, "cover duration, seconds")
 
 	rootCmd.AddCommand(splitCmd)
 }
