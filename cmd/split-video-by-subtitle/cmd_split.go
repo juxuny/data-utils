@@ -9,20 +9,20 @@ import (
 )
 
 var splitFlag = struct {
-	DataFileCet4   string
-	DataFileCet6   string
-	InSrt          string
-	OutSrt         string
-	HighlightColor string
-	FontFace       string
-	FontSize       int
-	GlobalFontSize int
-	ExpandSeconds  int
-	InputFile      string
-	OutExt         string
-	AutoRun        bool
-	Width          int
-	Height         int
+	DataFileCet4      string
+	DataFileCet6      string
+	InSrt             string
+	OutSrt            string
+	HighlightColor    string
+	FontFace          string
+	HighLightFontSize int
+	GlobalFontSize    int
+	ExpandSeconds     int
+	InputFile         string
+	OutExt            string
+	AutoRun           bool
+	Width             int
+	Height            int
 
 	CoverFontSize  int
 	CoverFontColor string
@@ -101,19 +101,19 @@ func init() {
 	splitCmd.PersistentFlags().StringVar(&splitFlag.OutSrt, "out-srt", "tmp/eng.converted.srt", "output subtitle file .srt")
 	splitCmd.PersistentFlags().StringVar(&splitFlag.HighlightColor, "color", "#f7db9f", "highlight color e.g #fff0cf")
 	splitCmd.PersistentFlags().StringVar(&splitFlag.FontFace, "face", "Cronos Pro Light", "font face. e.g Cronos Pro Light")
-	splitCmd.PersistentFlags().IntVar(&splitFlag.FontSize, "size", 14, "font size. 48")
+	splitCmd.PersistentFlags().IntVar(&splitFlag.HighLightFontSize, "size", 52, "font size. 48")
 	splitCmd.PersistentFlags().IntVar(&splitFlag.ExpandSeconds, "expand", 10, "expand seconds")
 	splitCmd.PersistentFlags().StringVarP(&splitFlag.InputFile, "input", "i", "", "input video file")
 	splitCmd.PersistentFlags().StringVar(&splitFlag.OutExt, "ext", "mp4", "output video type")
-	splitCmd.PersistentFlags().IntVar(&splitFlag.GlobalFontSize, "global-size", 12, "global font size")
+	splitCmd.PersistentFlags().IntVar(&splitFlag.GlobalFontSize, "global-size", 48, "global font size")
 	splitCmd.PersistentFlags().BoolVar(&splitFlag.AutoRun, "auto-run", false, "auto run the split script")
 	splitCmd.PersistentFlags().IntVar(&splitFlag.Width, "width", 1920, "video resolution width")
-	splitCmd.PersistentFlags().IntVar(&splitFlag.Height, "height", 810, "video resolution height")
+	splitCmd.PersistentFlags().IntVar(&splitFlag.Height, "height", 4550, "video resolution height")
 	splitCmd.PersistentFlags().IntVar(&splitFlag.CoverFontSize, "cover-font-size", 42, "cover image font size")
 	splitCmd.PersistentFlags().StringVar(&splitFlag.FontFile, "ttf", "tmp/No.73ShangShouFenBiTi-2.ttf", "ttf file")
 	splitCmd.PersistentFlags().StringVar(&splitFlag.CoverBg, "bg", "#000000", "cover background color")
 	splitCmd.PersistentFlags().StringVar(&splitFlag.CoverFontColor, "cover-color", "#FFFFFF", "cover font color")
-	splitCmd.PersistentFlags().IntVar(&splitFlag.CoverDuration, "cover-duration", 6, "cover duration, seconds")
+	splitCmd.PersistentFlags().IntVar(&splitFlag.CoverDuration, "cover-duration", 3, "cover duration, seconds")
 
 	rootCmd.AddCommand(splitCmd)
 }

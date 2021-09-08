@@ -151,11 +151,13 @@ func generateSplitScript(srtFile string, data []*SplitConfigData) error {
 	} else if !stat.IsDir() {
 		log.Fatal(outDir + "is not a director")
 	}
-	script += fmt.Sprintf("ffmpeg -y -i '%s' -vf subtitles='%s' '%s'\n", splitFlag.InputFile, srtFile, outVideo)
+	script += fmt.Sprintf("if [  ! -f %s ]; then ", outVideo)
+	script += fmt.Sprintf("ffmpeg -y -i '%s' -vf subtitles='%s' '%s';", splitFlag.InputFile, srtFile, outVideo)
+	script += fmt.Sprintf("fi\n")
 
 	//generate split command
 	for _, d := range data {
-		outSplit := path.Join(outDir, strings.TrimRight(path.Base(splitFlag.InputFile), ext)+fmt.Sprintf(".%d", d.Id)+"."+splitFlag.OutExt)
+		outSplit := path.Join(outDir, strings.TrimRight(path.Base(splitFlag.InputFile), ext)+fmt.Sprintf(".%d", d.Id))
 		start, err := time.Parse(intervalLayout, d.StartTime)
 		if err != nil {
 			log.Warn(err, "ignore block: ", d.Id)
@@ -167,7 +169,24 @@ func generateSplitScript(srtFile string, data []*SplitConfigData) error {
 			continue
 		}
 		duration := ZeroTime.Add(end.Sub(start)).Format(timeLayout)
-		script += fmt.Sprintf("ffmpeg -y -i '%s' -ss %s -t %s %s\n", outVideo, start.Format(timeLayout), duration, outSplit)
+		script += fmt.Sprintf(
+			"ffmpeg -y -i '%s' -ss %s -t %s -vf 'pad=iw:(iw/(ih/iw)):0:(((iw/(ih/iw))-ih)/2):black' '%s'\n",
+			outVideo,
+			start.Format(timeLayout),
+			duration,
+			outSplit+".crop.mp4",
+		)
+		//script += fmt.Sprintf(
+		//	"ffmpeg -y -i '%s' -vf 'pad=iw:(iw/(ih/iw)):0:(((iw/(ih/iw))-ih)/2):black' '%s'\n",
+		//	outSplit + ".split.mp4",
+		//	outSplit + ".crop.mp4",
+		//)
+		script += fmt.Sprintf(
+			"ffmpeg -y -i '%s' -f mpegts '%s'\n",
+			outSplit+".crop.mp4",
+			outSplit+".crop.ts",
+		)
+		script += fmt.Sprintf("ffmpeg -y -i 'concat:%s|%s' -vf select=concatdec_select -af aselect=concatdec_select,aresample=async=1 '%s'\n", outSplit+".begin.ts", outSplit+".crop.ts", outSplit+"."+splitFlag.OutExt)
 	}
 
 	if err := ioutil.WriteFile(outScript, []byte(script), 0755); err != nil {
@@ -204,39 +223,44 @@ func generateCoverImage(dictData *dict.Dict) error {
 			}
 		}
 		outImg := getCoverImageFile(d.Id)
-		log.Info("generate cover:", outImg)
-		c := canvas.NewCanvas(750, 1206)
-		if strings.Index(splitFlag.CoverBg, "#") == 0 {
-			if err := c.DrawColor(splitFlag.CoverBg); err != nil {
-				log.Warn(err)
-				continue
+		if _, err := os.Stat(outImg); os.IsNotExist(err) {
+			log.Info("generate cover:", outImg)
+			c := canvas.NewCanvas(splitFlag.Width, splitFlag.Height)
+			if strings.Index(splitFlag.CoverBg, "#") == 0 {
+				if err := c.DrawColor(splitFlag.CoverBg); err != nil {
+					log.Warn(err)
+					continue
+				}
+			} else {
+				coverBgExt := path.Ext(splitFlag.CoverBg)
+				imageType := canvas.ImageTypeJpeg
+				if strings.ToLower(coverBgExt) == ".png" {
+					imageType = canvas.ImageTypePng
+				}
+				bg := canvas.CreateImageView(splitFlag.CoverBg, c.Width, c.Height, imageType)
+				if err := c.Draw(bg); err != nil {
+					return errors.Wrapf(err, "generate cover failed, block id=%d", d.Id)
+				}
+			}
+			lv := canvas.CreateListView(420+50, 976+50, []canvas.View{})
+			for _, w := range words {
+				if err := lv.AppendChild(canvas.CreateTextView(w.Name, splitFlag.FontFile, splitFlag.CoverFontSize, splitFlag.CoverFontColor)); err != nil {
+					log.Warn(err)
+					continue
+				}
+			}
+			if err := c.Draw(lv); err != nil {
+				log.Error(err)
+				return errors.Wrapf(err, "render word failed, block id: %d", d.Id)
+			}
+			if err := c.Save(outImg, canvas.ImageTypeJpeg); err != nil {
+				log.Error(err)
+				return errors.Wrap(err, "save cover img failed: "+outImg)
 			}
 		} else {
-			coverBgExt := path.Ext(splitFlag.CoverBg)
-			imageType := canvas.ImageTypeJpeg
-			if strings.ToLower(coverBgExt) == ".png" {
-				imageType = canvas.ImageTypePng
-			}
-			bg := canvas.CreateImageView(splitFlag.CoverBg, c.Width, c.Height, imageType)
-			if err := c.Draw(bg); err != nil {
-				return errors.Wrapf(err, "generate cover failed, block id=%d", d.Id)
-			}
+			log.Info("ignore: ", outImg)
 		}
-		lv := canvas.CreateListView(135+50, 380+50, []canvas.View{})
-		for _, w := range words {
-			if err := lv.AppendChild(canvas.CreateTextView(w.Name, splitFlag.FontFile, splitFlag.CoverFontSize, splitFlag.CoverFontColor)); err != nil {
-				log.Warn(err)
-				continue
-			}
-		}
-		if err := c.Draw(lv); err != nil {
-			log.Error(err)
-			return errors.Wrapf(err, "render word failed, block id: %d", d.Id)
-		}
-		if err := c.Save(outImg, canvas.ImageTypeJpeg); err != nil {
-			log.Error(err)
-			return errors.Wrap(err, "save cover img failed: "+outImg)
-		}
+
 		if err := convertImageToVideo(outImg); err != nil {
 			log.Error(err)
 			return errors.Wrap(err, "convert image to video failed")
@@ -247,11 +271,14 @@ func generateCoverImage(dictData *dict.Dict) error {
 
 func convertImageToVideo(imageFile string) error {
 	ext := path.Ext(imageFile)
-	outVideo := strings.TrimRight(imageFile, ext) + ".mp4"
-	return runCommand("ffmpeg",
-		"-y", "-r", "25", "-loop", "1", "-i", imageFile,
-		"-r", "25", "-t", fmt.Sprintf("%d", splitFlag.CoverDuration), outVideo,
-	)
+	outVideo := strings.TrimRight(imageFile, ext) + ".ts"
+	if _, err := os.Stat(outVideo); os.IsNotExist(err) {
+		return runCommand("ffmpeg",
+			"-y", "-r", "25", "-loop", "1", "-i", imageFile,
+			"-r", "25", "-t", fmt.Sprintf("%d", splitFlag.CoverDuration), outVideo,
+		)
+	}
+	return nil
 }
 
 // 转换字幕
@@ -306,7 +333,7 @@ func convertSrt(inFile, outFile string, filter CetFilter) error {
 					[]byte(fmt.Sprintf(
 						"<font face=\"%s\" size=\"%d\" color=\"%s\"><b>%s</b></font>",
 						splitFlag.FontFace,
-						splitFlag.FontSize,
+						splitFlag.HighLightFontSize,
 						splitFlag.HighlightColor,
 						w.Name,
 					)),
