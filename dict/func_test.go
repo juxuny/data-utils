@@ -1,7 +1,6 @@
 package dict
 
 import (
-	"fmt"
 	"testing"
 )
 
@@ -20,13 +19,4 @@ func TestReplaceAllWords(t *testing.T) {
 			t.Fatal("wrong result: ", string(result))
 		}
 	}
-}
-
-func TestConvertHexColor(t *testing.T) {
-	s := "#AA0F0E"
-	c, err := convertHexToRGBA(s)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Log(fmt.Sprintf("%02x %02x %02x %02x", c.A, c.R, c.G, c.B))
 }

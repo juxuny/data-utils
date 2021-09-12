@@ -5,6 +5,8 @@ import (
 	"image"
 )
 
+var DPI = float64(72)
+
 type ViewType string
 
 const (

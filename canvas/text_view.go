@@ -4,18 +4,19 @@ import (
 	"fmt"
 	"github.com/golang/freetype"
 	"github.com/golang/freetype/truetype"
+	"github.com/juxuny/data-utils/lib"
 	"github.com/pkg/errors"
 	"golang.org/x/image/font"
 	"golang.org/x/image/math/fixed"
 	"image"
 	"image/draw"
 	"strings"
+	"unicode"
 )
 
 type TextView struct {
 	*BaseView
 	measureError error
-	size         int
 	src          string
 	fontColor    string
 	painter      *Painter
@@ -41,8 +42,8 @@ func (t *TextView) getTextHeight() int {
 	//bounds := t.painter.Font.Bounds(fixed.Int26_6(t.painter.Font.FUnitsPerEm()))
 	//height := int(float64(bounds.Max.Y-bounds.Min.Y) * scale)
 	fc := truetype.NewFace(t.painter.Font, &truetype.Options{
-		Size:    float64(t.size),
-		DPI:     72,
+		Size:    t.painter.FontSize,
+		DPI:     DPI,
 		Hinting: font.HintingNone,
 	})
 	m := fc.Metrics()
@@ -66,12 +67,13 @@ func (t *TextView) Measure() image.Rectangle {
 		return t.Rect
 	}
 	t.src = src
+	t.painter = NewPainter()
 	size, isInt := t.Attr[AttrKey.FontSize].(int)
 	if !isInt {
 		t.measureError = fmt.Errorf("%s is not an int", AttrKey.FontSize)
 		return t.Rect
 	}
-	t.size = size
+	t.painter.SetFontSize(float64(size))
 	fontColor, isString := t.Attr[AttrKey.FontColor].(string)
 	if !isString {
 		t.measureError = invalidAttr(AttrKey.FontColor, t.Attr[AttrKey.FontColor])
@@ -83,7 +85,6 @@ func (t *TextView) Measure() image.Rectangle {
 		t.measureError = fmt.Errorf("measure text-view failed, invalid font data")
 		return t.Rect
 	}
-	t.painter = NewPainter()
 	if err := t.painter.SetFontByFontData(fontData); err != nil {
 		t.measureError = errors.Wrap(err, "set font failed")
 		return t.Rect
@@ -94,7 +95,7 @@ func (t *TextView) Measure() image.Rectangle {
 	} else {
 		t.painter.SetColor(image.NewUniform(c))
 	}
-	t.painter.SetFontSize(float64(t.size))
+	wordWrap, _ := t.Attr[AttrKey.WordWrap].(bool)
 	//tmp := image.NewRGBA(image.Rect(0, 0, 1080, 1920))
 	top := 0
 	left := 0
@@ -102,40 +103,81 @@ func (t *TextView) Measure() image.Rectangle {
 	var pt fixed.Point26_6
 	d := &font.Drawer{
 		Face: truetype.NewFace(t.painter.Font, &truetype.Options{
-			Size:    float64(t.size),
-			DPI:     72,
+			Size:    t.painter.FontSize,
+			DPI:     DPI,
 			Hinting: font.HintingNone,
 		}),
 	}
 	//measure bound
 	textHeight := t.getTextHeight()
-	t.Rect = image.Rect(0, 0, 0, 0)
-	for _, line := range lines {
-		_, result := d.BoundString(line)
-		//d.Dot.X = fixed.I(0)
-		width := result.Ceil()
-		if width > t.Rect.Max.X {
-			t.Rect.Max.X = width
+	if wordWrap {
+		fixedWidth := t.Rect.Dx()
+		t.Rect = image.Rect(0, 0, fixedWidth, 0)
+		for _, line := range lines {
+			wrapLine := t.wrapLine(line)
+			t.Rect.Max.Y = len(wrapLine) * textHeight
 		}
-		t.Rect.Max.Y += textHeight
+	} else {
+		t.Rect = image.Rect(0, 0, 0, 0)
+		for _, line := range lines {
+			_, result := d.BoundString(line)
+			//d.Dot.X = fixed.I(0)
+			width := result.Ceil()
+			if width > t.Rect.Max.X {
+				t.Rect.Max.X = width
+			}
+			t.Rect.Max.Y += textHeight
+		}
 	}
 	//log.Debug(t.Rect.Dx(), t.Rect.Dy())
 	t.background = image.NewRGBA(t.Rect)
 	t.painter.Context.SetClip(t.background.Bounds())
 	t.painter.Context.SetDst(t.background)
 	for _, line := range lines {
-		pt = freetype.Pt(0, top+int(t.painter.Context.PointToFixed(t.painter.FontSize)>>6))
-		pt, err = t.painter.Context.DrawString(line, pt)
-		if err != nil {
-			t.measureError = errors.Wrap(err, "draw string failed")
-			return t.Rect
+		var wrapLine []string
+		if wordWrap {
+			wrapLine = t.wrapLine(line)
+		} else {
+			wrapLine = []string{line}
 		}
-		if int(pt.X)>>6 > left {
-			left = int(pt.X) >> 6
+		for _, wl := range wrapLine {
+			pt = freetype.Pt(0, top+int(t.painter.Context.PointToFixed(t.painter.FontSize)>>6))
+			pt, err = t.painter.Context.DrawString(wl, pt)
+			if err != nil {
+				t.measureError = errors.Wrap(err, "draw string failed")
+				return t.Rect
+			}
+			if int(pt.X)>>6 > left {
+				left = int(pt.X) >> 6
+			}
+			top += textHeight
 		}
-		top += textHeight
 	}
 	return t.Rect
+}
+
+// 给一行文本自动换行
+func (t *TextView) wrapLine(line string) []string {
+	l := lib.String.SplitWithStopFunc(line, unicode.IsLetter)
+	fixedWidth := t.Width()
+	i := 1
+	ret := make([]string, 0)
+	buf := l[0]
+	for i < len(l) {
+		w := t.painter.MeasureTextWidth(buf + l[i])
+		if fixedWidth < w {
+			ret = append(ret, buf)
+			buf = l[i]
+			i++
+			continue
+		}
+		buf += l[i]
+		i++
+	}
+	if len(buf) > 0 {
+		ret = append(ret, buf)
+	}
+	return ret
 }
 
 func (t *TextView) ViewType() ViewType {
@@ -143,15 +185,35 @@ func (t *TextView) ViewType() ViewType {
 }
 
 // src ttf font file path
-func CreateTextView(text string, src string, size int, color string) *TextView {
+func CreateTextView(text string, fontFileSrc string, size int, color string) *TextView {
 	tv := &TextView{
 		BaseView: &BaseView{
 			Attr: Attr{
-				AttrKey.Src:       src,
+				AttrKey.Src:       fontFileSrc,
 				AttrKey.FontSize:  size,
 				AttrKey.FontColor: color,
 				AttrKey.Text:      text,
 			},
+		},
+	}
+	return tv
+}
+
+// 创建自动换行的TextView
+func CreateWrapTextView(text string, fontFile string, fontSize int, color string, width int, attr *Attr) *TextView {
+	var newAttr = make(Attr)
+	if attr != nil {
+		newAttr = *attr
+	}
+	newAttr[AttrKey.Src] = fontFile
+	newAttr[AttrKey.FontSize] = fontSize
+	newAttr[AttrKey.FontColor] = color
+	newAttr[AttrKey.Text] = text
+	newAttr[AttrKey.WordWrap] = true
+	tv := &TextView{
+		BaseView: &BaseView{
+			Attr: newAttr,
+			Rect: image.Rect(0, 0, width, 0),
 		},
 	}
 	return tv

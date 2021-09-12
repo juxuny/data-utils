@@ -11,19 +11,19 @@ func TestNewCanvas(t *testing.T) {
 	if err := canvas.Draw(img); err != nil {
 		t.Fatal(err)
 	}
-
+	textSize := 30
 	lv := CreateListView(0, 0, []View{
 		CreateImageView("tmp/cover.jpeg", 1920, 810, ImageTypeJpeg),
 		//CreateImageView("tmp/cover.jpeg", 1920, 810, ImageTypeJpeg),
 		CreateCenterLayout(CenterTypeAll, image.Point{X: 0, Y: 0}, 1920, 810,
 			CreateBox(image.Rect(0, 0, 1920, 810),
 				CreateListView(0, 0, []View{
-					CreateTextView("Hello\nWorld !!!\nMy name is Juxuny Wu", "tmp/No.73ShangShouFenBiTi-2.ttf", 42, "#FFFFFF"),
-					CreateTextView("Daily Help\nWorld !!!\nMy name is Juxuny Wu", "tmp/No.73ShangShouFenBiTi-2.ttf", 42, "#FFFFFF"),
-					CreateTextView("Hello\nWorld !!!\nMy name is Juxuny Wu", "tmp/No.73ShangShouFenBiTi-2.ttf", 42, "#00FFFF"),
-					CreateTextView("Hello\nWorld !!!\nMy name is Juxuny Wu", "tmp/No.73ShangShouFenBiTi-2.ttf", 42, "#FFFFFF"),
-					CreateTextView("Hello\nWorld !!!", "tmp/No.73ShangShouFenBiTi-2.ttf", 42, "#FFFFFF"),
-					CreateTextView("Hello\nWorld !!!", "tmp/No.73ShangShouFenBiTi-2.ttf", 42, "#FFFFFF"),
+					CreateTextView("Hello World !!! My name is Juxuny Wu", "tmp/No.73ShangShouFenBiTi-2.ttf", textSize, "#FFFFFF"),
+					CreateWrapTextView("Daily Help World !!! My name is Juxuny Wu", "tmp/No.73ShangShouFenBiTi-2.ttf", textSize, "#FFFFFF", 200, nil),
+					CreateTextView("Daily Help World !!! My name is Juxuny Wu", "tmp/No.73ShangShouFenBiTi-2.ttf", textSize, "#00FFFF"),
+					CreateTextView("Hello World !!! My name is Juxuny Wu", "tmp/No.73ShangShouFenBiTi-2.ttf", textSize, "#FFFFFF"),
+					CreateTextView("Hello World !!!", "tmp/No.73ShangShouFenBiTi-2.ttf", textSize, "#FFFFFF"),
+					CreateTextView("Hello World !!!", "tmp/No.73ShangShouFenBiTi-2.ttf", textSize, "#FFFFFF"),
 				}),
 			),
 		),

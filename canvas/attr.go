@@ -14,9 +14,10 @@ var AttrKey = struct {
 	Color           string
 	BackgroundColor string
 	Src             string
-	ImageType       string
-	Text            string
-	CenterType      string
+	ImageType       string // 图片类型,
+	Text            string // 文本
+	CenterType      string // 居中对齐类型
+	WordWrap        string // 自动换行
 }{}
 
 func init() {
@@ -30,3 +31,10 @@ func invalidAttr(k string, value ...interface{}) error {
 	}
 	return fmt.Errorf(s)
 }
+
+type ImageType uint8
+
+const (
+	ImageTypePng  = ImageType(1)
+	ImageTypeJpeg = ImageType(2)
+)
