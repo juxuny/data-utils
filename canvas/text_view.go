@@ -121,7 +121,6 @@ func (t *TextView) Measure() image.Rectangle {
 		t.Rect = image.Rect(0, 0, 0, 0)
 		for _, line := range lines {
 			_, result := d.BoundString(line)
-			//d.Dot.X = fixed.I(0)
 			width := result.Ceil()
 			if width > t.Rect.Max.X {
 				t.Rect.Max.X = width
@@ -200,21 +199,24 @@ func CreateTextView(text string, fontFileSrc string, size int, color string) *Te
 }
 
 // 创建自动换行的TextView
-func CreateWrapTextView(text string, fontFile string, fontSize int, color string, width int, attr *Attr) *TextView {
-	var newAttr = make(Attr)
-	if attr != nil {
-		newAttr = *attr
-	}
-	newAttr[AttrKey.Src] = fontFile
-	newAttr[AttrKey.FontSize] = fontSize
-	newAttr[AttrKey.FontColor] = color
-	newAttr[AttrKey.Text] = text
-	newAttr[AttrKey.WordWrap] = true
+func CreateWrapTextView(text string, fontFileSrc string, size int, color string, width int, attr *Attr) *TextView {
+
 	tv := &TextView{
 		BaseView: &BaseView{
-			Attr: newAttr,
+			Attr: Attr{
+				AttrKey.Src:       fontFileSrc,
+				AttrKey.FontSize:  size,
+				AttrKey.FontColor: color,
+				AttrKey.Text:      text,
+				AttrKey.WordWrap:  true,
+			},
 			Rect: image.Rect(0, 0, width, 0),
 		},
+	}
+	if attr != nil {
+		for k, v := range *attr {
+			tv.Attr[k] = v
+		}
 	}
 	return tv
 }

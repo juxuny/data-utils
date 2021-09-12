@@ -9,4 +9,7 @@ go run github.com/juxuny/data-utils/cmd/split-video-by-subtitle \
   --bg tmp/daily_2.png \
   --cover-color '#000000' \
   --cover-duration 2 \
-  --cover-font-size 120 "$@"
+  --cover-font-size 120 \
+  --desc-font-color '#ea5a4f' \
+  --desc-font-size 96 \
+  "$@"

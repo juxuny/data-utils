@@ -156,7 +156,10 @@ func generateSplitScript(srtFile string, data []*SplitConfigData) error {
 	script += fmt.Sprintf("fi\n")
 
 	//generate split command
-	for _, d := range data {
+	for i, d := range data {
+		if splitFlag.MaxNum > 0 && i >= splitFlag.MaxNum {
+			break
+		}
 		outSplit := path.Join(outDir, strings.TrimRight(path.Base(splitFlag.InputFile), ext)+fmt.Sprintf(".%d", d.Id))
 		start, err := time.Parse(intervalLayout, d.StartTime)
 		if err != nil {
@@ -195,10 +198,11 @@ func generateSplitScript(srtFile string, data []*SplitConfigData) error {
 	return nil
 }
 
-func getCoverImageFile(blockId int64) string {
+// suffix 'begin' or 'end'.
+func getCoverImageFile(blockId int64, suffix string) string {
 	ext := path.Ext(splitFlag.InputFile)
 	outDir := strings.TrimRight(splitFlag.InputFile, ext) + ".d"
-	outImg := path.Join(outDir, strings.TrimRight(path.Base(splitFlag.InputFile), ext)+fmt.Sprintf(".%d.begin", blockId)+".jpg")
+	outImg := path.Join(outDir, strings.TrimRight(path.Base(splitFlag.InputFile), ext)+fmt.Sprintf(".%d.%s", blockId, suffix)+".jpg")
 	return outImg
 }
 
@@ -222,7 +226,8 @@ func generateCoverImage(dictData *dict.Dict) error {
 				words = append(words, v)
 			}
 		}
-		outImg := getCoverImageFile(d.Id)
+		// 生成开头的封面
+		outImg := getCoverImageFile(d.Id, "begin")
 		if _, err := os.Stat(outImg); os.IsNotExist(err) {
 			log.Info("generate cover:", outImg)
 			c := canvas.NewCanvas(splitFlag.Width, splitFlag.Height)
@@ -258,7 +263,52 @@ func generateCoverImage(dictData *dict.Dict) error {
 				return errors.Wrap(err, "save cover img failed: "+outImg)
 			}
 		} else {
-			log.Info("ignore: ", outImg)
+			log.Info("ignore begin cover: ", outImg)
+		}
+
+		// 生成结尾图片
+		outImg = getCoverImageFile(d.Id, "end")
+		if _, err := os.Stat(outImg); os.IsNotExist(err) {
+			log.Info("generate cover:", outImg)
+			c := canvas.NewCanvas(splitFlag.Width, splitFlag.Height)
+			if strings.Index(splitFlag.CoverBg, "#") == 0 {
+				if err := c.DrawColor(splitFlag.CoverBg); err != nil {
+					log.Warn(err)
+					continue
+				}
+			} else {
+				coverBgExt := path.Ext(splitFlag.CoverBg)
+				imageType := canvas.ImageTypeJpeg
+				if strings.ToLower(coverBgExt) == ".png" {
+					imageType = canvas.ImageTypePng
+				}
+				bg := canvas.CreateImageView(splitFlag.CoverBg, c.Width, c.Height, imageType)
+				if err := c.Draw(bg); err != nil {
+					return errors.Wrapf(err, "generate cover failed, block id=%d", d.Id)
+				}
+			}
+			lv := canvas.CreateListView(420+50, 976+50, []canvas.View{})
+			for _, w := range words {
+				if err := lv.AppendChild(canvas.CreateTextView(w.Name, splitFlag.FontFile, splitFlag.CoverFontSize, splitFlag.CoverFontColor)); err != nil {
+					log.Warn(err)
+					continue
+				}
+				//log.Debug("descFontSize:", splitFlag.DescriptionFontSize, " color:", splitFlag.DescriptionFontColor)
+				if err := lv.AppendChild(canvas.CreateWrapTextView(w.Description, splitFlag.FontFile, splitFlag.DescriptionFontSize, splitFlag.DescriptionFontColor, 1380, nil)); err != nil {
+					log.Warn(err)
+					continue
+				}
+			}
+			if err := c.Draw(lv); err != nil {
+				log.Error(err)
+				return errors.Wrapf(err, "render word failed, block id: %d", d.Id)
+			}
+			if err := c.Save(outImg, canvas.ImageTypeJpeg); err != nil {
+				log.Error(err)
+				return errors.Wrap(err, "save cover img failed: "+outImg)
+			}
+		} else {
+			log.Info("ignore end cover: ", outImg)
 		}
 
 		if err := convertImageToVideo(outImg); err != nil {

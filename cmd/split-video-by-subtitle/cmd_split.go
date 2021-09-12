@@ -24,11 +24,15 @@ var splitFlag = struct {
 	Width             int
 	Height            int
 
-	CoverFontSize  int
-	CoverFontColor string
-	CoverBg        string
-	FontFile       string // 生成封面用的ttf文件
-	CoverDuration  int    // 封面单词汇总等待时长
+	CoverFontSize        int
+	CoverFontColor       string
+	CoverBg              string
+	DescriptionFontSize  int
+	DescriptionFontColor string
+	FontFile             string // 生成封面用的ttf文件
+	CoverDuration        int    // 封面单词汇总等待时长
+
+	MaxNum int // 最多分多少个文件
 }{}
 
 func checkArgument() {
@@ -109,11 +113,16 @@ func init() {
 	splitCmd.PersistentFlags().BoolVar(&splitFlag.AutoRun, "auto-run", false, "auto run the split script")
 	splitCmd.PersistentFlags().IntVar(&splitFlag.Width, "width", 1920, "video resolution width")
 	splitCmd.PersistentFlags().IntVar(&splitFlag.Height, "height", 4550, "video resolution height")
+
 	splitCmd.PersistentFlags().IntVar(&splitFlag.CoverFontSize, "cover-font-size", 42, "cover image font size")
 	splitCmd.PersistentFlags().StringVar(&splitFlag.FontFile, "ttf", "tmp/No.73ShangShouFenBiTi-2.ttf", "ttf file")
 	splitCmd.PersistentFlags().StringVar(&splitFlag.CoverBg, "bg", "#000000", "cover background color")
 	splitCmd.PersistentFlags().StringVar(&splitFlag.CoverFontColor, "cover-color", "#FFFFFF", "cover font color")
 	splitCmd.PersistentFlags().IntVar(&splitFlag.CoverDuration, "cover-duration", 3, "cover duration, seconds")
+
+	splitCmd.PersistentFlags().IntVar(&splitFlag.DescriptionFontSize, "desc-font-size", 42, "translation font size")
+	splitCmd.PersistentFlags().StringVar(&splitFlag.DescriptionFontColor, "desc-font-color", "#FFFFFF", "translation font color")
+	splitCmd.PersistentFlags().IntVar(&splitFlag.MaxNum, "max-num", -1, "max number of split segment")
 
 	rootCmd.AddCommand(splitCmd)
 }
