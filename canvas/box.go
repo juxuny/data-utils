@@ -18,13 +18,14 @@ func (t *Box) ViewType() ViewType {
 func CreateBox(rect image.Rectangle, child View) *Box {
 	b := &Box{
 		BaseView: &BaseView{
-			Children: []View{
-				child,
-			},
+			Children: []View{},
 			Rect:     rect,
 			Attr:     Attr{},
 			measured: false,
 		},
+	}
+	if child != nil {
+		b.Children = append(b.Children, child)
 	}
 	return b
 }
