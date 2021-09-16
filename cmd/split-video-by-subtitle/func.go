@@ -9,6 +9,7 @@ import (
 	"github.com/juxuny/data-utils/srt"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
+	"image"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -138,6 +139,10 @@ func getSplitScriptFileName() string {
 	return strings.TrimRight(splitFlag.InputFile, ext) + ".sh"
 }
 
+func getPadConfig() string {
+	return fmt.Sprintf("%d:%d:0:(%d-ih)/2:black", splitFlag.Width, splitFlag.Height, splitFlag.Height)
+}
+
 func generateSplitScript(srtFile string, data []*SplitConfigData) error {
 	script := ""
 	ext := path.Ext(splitFlag.InputFile)
@@ -173,10 +178,11 @@ func generateSplitScript(srtFile string, data []*SplitConfigData) error {
 		}
 		duration := ZeroTime.Add(end.Sub(start)).Format(timeLayout)
 		script += fmt.Sprintf(
-			"ffmpeg -y -i '%s' -ss %s -t %s -vf 'pad=iw:(iw/(ih/iw)):0:(((iw/(ih/iw))-ih)/2):black' '%s'\n",
+			"ffmpeg -y -i '%s' -ss %s -t %s -vf 'pad=%s' '%s'\n",
 			outVideo,
 			start.Format(timeLayout),
 			duration,
+			getPadConfig(),
 			outSplit+".crop.mp4",
 		)
 		//script += fmt.Sprintf(
@@ -189,7 +195,13 @@ func generateSplitScript(srtFile string, data []*SplitConfigData) error {
 			outSplit+".crop.mp4",
 			outSplit+".crop.ts",
 		)
-		script += fmt.Sprintf("ffmpeg -y -i 'concat:%s|%s' -vf select=concatdec_select -af aselect=concatdec_select,aresample=async=1 '%s'\n", outSplit+".begin.ts", outSplit+".crop.ts", outSplit+"."+splitFlag.OutExt)
+		script += fmt.Sprintf(
+			"ffmpeg -y -i 'concat:%s|%s|%s' -vf select=concatdec_select -af aselect=concatdec_select,aresample=async=1 '%s'\n",
+			outSplit+".begin.ts",
+			outSplit+".crop.ts",
+			outSplit+".end.ts",
+			outSplit+"."+splitFlag.OutExt,
+		)
 	}
 
 	if err := ioutil.WriteFile(outScript, []byte(script), 0755); err != nil {
@@ -266,6 +278,12 @@ func generateCoverImage(dictData *dict.Dict) error {
 			log.Info("ignore begin cover: ", outImg)
 		}
 
+		// 图片转ts视频
+		if err := convertImageToVideo(outImg); err != nil {
+			log.Error(err)
+			return errors.Wrap(err, "convert image to video failed")
+		}
+
 		// 生成结尾图片
 		outImg = getCoverImageFile(d.Id, "end")
 		if _, err := os.Stat(outImg); os.IsNotExist(err) {
@@ -287,7 +305,7 @@ func generateCoverImage(dictData *dict.Dict) error {
 					return errors.Wrapf(err, "generate cover failed, block id=%d", d.Id)
 				}
 			}
-			lv := canvas.CreateListView(420+50, 976+50, []canvas.View{})
+			lv := canvas.CreateListView(427+50, 978+50, []canvas.View{})
 			for _, w := range words {
 				if err := lv.AppendChild(canvas.CreateTextView(w.Name, splitFlag.FontFile, splitFlag.CoverFontSize, splitFlag.CoverFontColor)); err != nil {
 					log.Warn(err)
@@ -295,6 +313,11 @@ func generateCoverImage(dictData *dict.Dict) error {
 				}
 				//log.Debug("descFontSize:", splitFlag.DescriptionFontSize, " color:", splitFlag.DescriptionFontColor)
 				if err := lv.AppendChild(canvas.CreateWrapTextView(w.Description, splitFlag.FontFile, splitFlag.DescriptionFontSize, splitFlag.DescriptionFontColor, 1380, nil)); err != nil {
+					log.Warn(err)
+					continue
+				}
+
+				if err := lv.AppendChild(canvas.CreateBox(image.Rect(0, 0, 50, 50), nil)); err != nil {
 					log.Warn(err)
 					continue
 				}
@@ -311,6 +334,7 @@ func generateCoverImage(dictData *dict.Dict) error {
 			log.Info("ignore end cover: ", outImg)
 		}
 
+		// 结尾图片转视频
 		if err := convertImageToVideo(outImg); err != nil {
 			log.Error(err)
 			return errors.Wrap(err, "convert image to video failed")

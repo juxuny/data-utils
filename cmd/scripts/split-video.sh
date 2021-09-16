@@ -7,9 +7,9 @@ source cmd/scripts/.env
 go run github.com/juxuny/data-utils/cmd/split-video-by-subtitle \
   split -i '/Users/juxuny/Downloads/Kung.Fu.Panda.2008.1080p.BluRay.x264.DTS-FGT/out.mp4' \
   --bg tmp/daily_2.png \
-  --cover-color '#000000' \
+  --cover-color '#ea5a4f' \
   --cover-duration 2 \
   --cover-font-size 120 \
-  --desc-font-color '#ea5a4f' \
+  --desc-font-color '#393939' \
   --desc-font-size 96 \
   "$@"

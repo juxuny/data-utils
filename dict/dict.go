@@ -32,6 +32,13 @@ func NewDict() *Dict {
 	}
 }
 
+func (t *Dict) Remove(words ...string) *Dict {
+	for _, w := range words {
+		delete(t.Data, w)
+	}
+	return t
+}
+
 func (t *Dict) String() string {
 	ret := make([]string, 0)
 	for _, w := range t.Data {
@@ -73,4 +80,20 @@ func parseWord(line string) Word {
 		w.Description = strings.TrimSpace(line[index+1:])
 	}
 	return w
+}
+
+func LoadBlackList(blackListFileName string) (ret []string, err error) {
+	data, err := ioutil.ReadFile(blackListFileName)
+	if err != nil {
+		return nil, errors.Wrap(err, "load black list failed")
+	}
+	lines := strings.Split(string(data), "\n")
+	for _, l := range lines {
+		l = strings.TrimSpace(l)
+		if l == "" {
+			continue
+		}
+		ret = append(ret, l)
+	}
+	return
 }

@@ -33,6 +33,8 @@ var splitFlag = struct {
 	CoverDuration        int    // 封面单词汇总等待时长
 
 	MaxNum int // 最多分多少个文件
+
+	BlackList string // 黑名单，过滤掉没必要的词
 }{}
 
 func checkArgument() {
@@ -63,6 +65,17 @@ var splitCmd = &cobra.Command{
 		//log.Info(dictCET6)
 		log.Info("load CET4 words: ", len(dictCET4.Data))
 		log.Info("load CET6 words: ", len(dictCET6.Data))
+		log.Info("load black list")
+		blackList, err := dict.LoadBlackList(splitFlag.BlackList)
+		if err != nil {
+			log.Fatal(err)
+		}
+		if len(blackList) > 0 {
+			dictCET4.Remove(blackList...)
+			dictCET6.Remove(blackList...)
+		}
+		log.Info("remain CET4 words: ", len(dictCET4.Data))
+		log.Info("remain CET6 words: ", len(dictCET6.Data))
 
 		// convert srt subtitle
 		if err := convertSrt(splitFlag.InSrt, splitFlag.OutSrt, func(content string) (words []dict.Word) {
@@ -112,7 +125,7 @@ func init() {
 	splitCmd.PersistentFlags().IntVar(&splitFlag.GlobalFontSize, "global-size", 48, "global font size")
 	splitCmd.PersistentFlags().BoolVar(&splitFlag.AutoRun, "auto-run", false, "auto run the split script")
 	splitCmd.PersistentFlags().IntVar(&splitFlag.Width, "width", 1920, "video resolution width")
-	splitCmd.PersistentFlags().IntVar(&splitFlag.Height, "height", 4550, "video resolution height")
+	splitCmd.PersistentFlags().IntVar(&splitFlag.Height, "height", 3414, "video resolution height")
 
 	splitCmd.PersistentFlags().IntVar(&splitFlag.CoverFontSize, "cover-font-size", 42, "cover image font size")
 	splitCmd.PersistentFlags().StringVar(&splitFlag.FontFile, "ttf", "tmp/No.73ShangShouFenBiTi-2.ttf", "ttf file")
@@ -123,6 +136,8 @@ func init() {
 	splitCmd.PersistentFlags().IntVar(&splitFlag.DescriptionFontSize, "desc-font-size", 42, "translation font size")
 	splitCmd.PersistentFlags().StringVar(&splitFlag.DescriptionFontColor, "desc-font-color", "#FFFFFF", "translation font color")
 	splitCmd.PersistentFlags().IntVar(&splitFlag.MaxNum, "max-num", -1, "max number of split segment")
+
+	splitCmd.PersistentFlags().StringVar(&splitFlag.BlackList, "black-list", "tmp/dick/black.txt", "black list file")
 
 	rootCmd.AddCommand(splitCmd)
 }
