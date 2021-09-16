@@ -188,21 +188,59 @@ func parseSegment(data []byte, startIndex int, s *segment) (offset int, err erro
 		s.Content = append(s.Content, data[i])
 		i += 1
 	}
-	return len(data) - 1, nil
+	return len(data), nil
 }
 
 func parseSegmentWrapper(data []byte) (ret []*segment, err error) {
-	for i := 0; i < len(data); i++ {
+	i := 0
+	buf := make([]byte, 0)
+	for i < len(data) {
+		if data[i] == '\n' {
+			if len(buf) > 0 {
+				content := newSegment(nil, SegmentTypeContent, 0)
+				content.Content = buf
+				buf = make([]byte, 0)
+				ret = append(ret, content)
+				i++
+				continue
+			}
+		}
 		if data[i] == '<' {
+			if len(buf) > 0 {
+				content := newSegment(nil, SegmentTypeContent, 0)
+				content.Content = buf
+				buf = make([]byte, 0)
+				ret = append(ret, content)
+			}
 			tag := newSegment(nil, SegmentTypeTag, 0)
 			if offset, err := parseSegment(data, i, tag); err != nil {
 				return nil, errors.Wrap(err, "parse tag failed")
 			} else {
 				ret = append(ret, tag)
 				i += offset
+				continue
 			}
+		} else {
+			buf = append(buf, data[i])
 		}
+		i++
 	}
+	if len(buf) > 0 {
+		content := newSegment(nil, SegmentTypeContent, 0)
+		content.Content = buf
+		ret = append(ret, content)
+	}
+	//for i := 0; i < len(data); i++ {
+	//	if data[i] == '<' {
+	//		tag := newSegment(nil, SegmentTypeTag, 0)
+	//		if offset, err := parseSegment(data, i, tag); err != nil {
+	//			return nil, errors.Wrap(err, "parse tag failed")
+	//		} else {
+	//			ret = append(ret, tag)
+	//			i += offset
+	//		}
+	//	}
+	//}
 	return
 }
 

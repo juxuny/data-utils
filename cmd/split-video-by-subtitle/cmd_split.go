@@ -119,7 +119,7 @@ func init() {
 	splitCmd.PersistentFlags().StringVar(&splitFlag.HighlightColor, "color", "#f7db9f", "highlight color e.g #fff0cf")
 	splitCmd.PersistentFlags().StringVar(&splitFlag.FontFace, "face", "Cronos Pro Light", "font face. e.g Cronos Pro Light")
 	splitCmd.PersistentFlags().IntVar(&splitFlag.HighLightFontSize, "size", 52, "font size. 48")
-	splitCmd.PersistentFlags().IntVar(&splitFlag.ExpandSeconds, "expand", 10, "expand seconds")
+	splitCmd.PersistentFlags().IntVar(&splitFlag.ExpandSeconds, "expand", 5, "expand seconds")
 	splitCmd.PersistentFlags().StringVarP(&splitFlag.InputFile, "input", "i", "", "input video file")
 	splitCmd.PersistentFlags().StringVar(&splitFlag.OutExt, "ext", "mp4", "output video type")
 	splitCmd.PersistentFlags().IntVar(&splitFlag.GlobalFontSize, "global-size", 48, "global font size")
@@ -137,7 +137,7 @@ func init() {
 	splitCmd.PersistentFlags().StringVar(&splitFlag.DescriptionFontColor, "desc-font-color", "#FFFFFF", "translation font color")
 	splitCmd.PersistentFlags().IntVar(&splitFlag.MaxNum, "max-num", -1, "max number of split segment")
 
-	splitCmd.PersistentFlags().StringVar(&splitFlag.BlackList, "black-list", "tmp/dick/black.txt", "black list file")
+	splitCmd.PersistentFlags().StringVar(&splitFlag.BlackList, "black-list", "tmp/dict/black.txt", "black list file")
 
 	rootCmd.AddCommand(splitCmd)
 }
