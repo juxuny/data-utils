@@ -12,6 +12,7 @@ import (
 	"image"
 	"image/color"
 	"io/ioutil"
+	"math/rand"
 	"os"
 	"os/exec"
 	"path"
@@ -63,40 +64,40 @@ func mergeSplitConfigData(configMap map[int64]*SplitConfigData) (ret []*SplitCon
 			input = append(input, v)
 		}
 	}
-	ret = make([]*SplitConfigData, 0)
-	i := 0
-	for i < len(input) {
-		if i < len(input)-1 {
-			endTime, err := time.Parse(intervalLayout, input[i].EndTime)
-			if err != nil {
-				log.Warn(err)
-				continue
-			}
-			nextStart, err := time.Parse(intervalLayout, input[i+1].StartTime)
-			if err != nil {
-				log.Warn(err)
-				continue
-			}
-			if endTime.Add(time.Second * time.Duration(splitFlag.ExpandSeconds)).After(nextStart.Add(-time.Second * time.Duration(splitFlag.ExpandSeconds))) {
-				log.Info("merged: ", input[i+1].Id, " >> ", input[i].Id)
-				merged := &SplitConfigData{
-					Id:        input[i].Id,
-					StartTime: input[i].StartTime,
-					EndTime:   input[i+1].EndTime,
-					Words:     input[i].Words,
-				}
-				for w := range input[i+1].Words {
-					merged.Words[w] = struct{}{}
-				}
-				ret = append(ret, input[i])
-				i += 1
-			}
-		} else {
-			ret = append(ret, input[i])
-		}
-		i++
-	}
-	return
+	//ret = make([]*SplitConfigData, 0)
+	//i := 0
+	//for i < len(input) {
+	//	if i < len(input)-1 {
+	//		endTime, err := time.Parse(intervalLayout, input[i].EndTime)
+	//		if err != nil {
+	//			log.Warn(err)
+	//			continue
+	//		}
+	//		nextStart, err := time.Parse(intervalLayout, input[i+1].StartTime)
+	//		if err != nil {
+	//			log.Warn(err)
+	//			continue
+	//		}
+	//		if endTime.Add(time.Second * time.Duration(splitFlag.ExpandSeconds)).After(nextStart.Add(-time.Second * time.Duration(splitFlag.ExpandSeconds))) {
+	//			log.Info("merged: ", input[i+1].Id, " >> ", input[i].Id)
+	//			merged := &SplitConfigData{
+	//				Id:        input[i].Id,
+	//				StartTime: input[i].StartTime,
+	//				EndTime:   input[i+1].EndTime,
+	//				Words:     input[i].Words,
+	//			}
+	//			for w := range input[i+1].Words {
+	//				merged.Words[w] = struct{}{}
+	//			}
+	//			ret = append(ret, input[i])
+	//			i += 1
+	//		}
+	//	} else {
+	//		ret = append(ret, input[i])
+	//	}
+	//	i++
+	//}
+	return input
 }
 
 // 扩展时间范围，防止视频过短
@@ -131,7 +132,10 @@ func runCommand(command string, args ...string) error {
 	log.Debug("run command: ", cmd.String())
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	return cmd.Run()
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+	return cmd.Wait()
 }
 
 func getSplitScriptFileName() string {
@@ -148,6 +152,7 @@ func generateSplitScript(srtFile string, data []*SplitConfigData) error {
 	ext := path.Ext(splitFlag.InputFile)
 	outScript := getSplitScriptFileName()
 	outDir := strings.TrimRight(splitFlag.InputFile, ext) + ".d"
+	cropVideo := path.Join(outDir, strings.TrimRight(path.Base(splitFlag.InputFile), ext)+".crop."+splitFlag.OutExt)
 	outVideo := path.Join(outDir, strings.TrimRight(path.Base(splitFlag.InputFile), ext)+"."+splitFlag.OutExt)
 	if stat, err := os.Stat(outDir); os.IsNotExist(err) {
 		if err := os.MkdirAll(outDir, 0755); err != nil {
@@ -156,6 +161,17 @@ func generateSplitScript(srtFile string, data []*SplitConfigData) error {
 	} else if !stat.IsDir() {
 		log.Fatal(outDir + "is not a director")
 	}
+	// 添加字幕
+	//script += fmt.Sprintf("if [  ! -f %s ]; then ", outVideo)
+	//script += fmt.Sprintf("ffmpeg -y -i '%s' -vf subtitles='%s' '%s';", splitFlag.InputFile, srtFile, outVideo)
+	//script += fmt.Sprintf("fi\n")
+
+	// 增加黑边
+	script += fmt.Sprintf("if [  ! -f %s ]; then ", cropVideo)
+	script += fmt.Sprintf("ffmpeg -y -i '%s' -vf 'pad=%s' '%s';", splitFlag.InputFile, getPadConfig(), cropVideo)
+	script += fmt.Sprintf("fi\n")
+
+	// 增加字幕
 	script += fmt.Sprintf("if [  ! -f %s ]; then ", outVideo)
 	script += fmt.Sprintf("ffmpeg -y -i '%s' -vf subtitles='%s' '%s';", splitFlag.InputFile, srtFile, outVideo)
 	script += fmt.Sprintf("fi\n")
@@ -175,18 +191,12 @@ func generateSplitScript(srtFile string, data []*SplitConfigData) error {
 		}
 		duration := ZeroTime.Add(end.Sub(start)).Format(timeLayout)
 		script += fmt.Sprintf(
-			"ffmpeg -y -i '%s' -ss %s -t %s -vf 'pad=%s' '%s'\n",
+			"ffmpeg -y -i '%s' -ss %s -t %s '%s'\n",
 			outVideo,
 			start.Format(timeLayout),
 			duration,
-			getPadConfig(),
 			outSplit+".crop.mp4",
 		)
-		//script += fmt.Sprintf(
-		//	"ffmpeg -y -i '%s' -vf 'pad=iw:(iw/(ih/iw)):0:(((iw/(ih/iw))-ih)/2):black' '%s'\n",
-		//	outSplit + ".split.mp4",
-		//	outSplit + ".crop.mp4",
-		//)
 		script += fmt.Sprintf(
 			"ffmpeg -y -i '%s' -f mpegts '%s'\n",
 			outSplit+".crop.mp4",
@@ -384,6 +394,21 @@ func convertImageToVideo(imageFile string) error {
 	return nil
 }
 
+// 随机选择单词数组里的几个元素
+func randomSampleWords(words []dict.Word, num int) []dict.Word {
+	if len(words) == 0 {
+		return []dict.Word{}
+	}
+	index := rand.Perm(len(words))
+	i := 0
+	ret := make([]dict.Word, 0)
+	for i < num && i < len(words) {
+		ret = append(ret, words[index[i]])
+		i++
+	}
+	return ret
+}
+
 // 转换字幕
 func convertSrt(inFile, outFile string, filter CetFilter) error {
 	inData, err := ioutil.ReadFile(inFile)
@@ -411,6 +436,8 @@ func convertSrt(inFile, outFile string, filter CetFilter) error {
 			if len(words) == 0 {
 				return false
 			}
+			words = randomSampleWords(words, splitFlag.MaxWords)
+			log.Debug("highlight words:", len(words))
 			wordMap := make(map[string]struct{})
 			for _, w := range words {
 				wordMap[w.Name] = struct{}{}

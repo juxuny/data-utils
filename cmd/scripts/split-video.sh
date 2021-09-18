@@ -16,4 +16,5 @@ go run github.com/juxuny/data-utils/cmd/split-video-by-subtitle \
   --desc-font-size 80 \
   --repeat=3 \
   --expand=1 \
+  --max-words=3 \
   "$@"

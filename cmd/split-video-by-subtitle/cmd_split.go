@@ -24,6 +24,7 @@ var splitFlag = struct {
 	Width             int
 	Height            int
 	Repeat            int // 电影部分重复播放次数
+	MaxWords          int // 一个句子最多几个单词
 
 	CoverFontSize        int
 	CoverFontColor       string
@@ -125,6 +126,7 @@ func init() {
 	splitCmd.PersistentFlags().BoolVar(&splitFlag.AutoRun, "auto-run", false, "auto run the split script")
 	splitCmd.PersistentFlags().IntVar(&splitFlag.Width, "width", 1920, "video resolution width")
 	splitCmd.PersistentFlags().IntVar(&splitFlag.Height, "height", 3414, "video resolution height")
+	splitCmd.PersistentFlags().IntVar(&splitFlag.MaxWords, "max-words", 3, "the maximum number of highlight word in one sentence")
 
 	splitCmd.PersistentFlags().IntVar(&splitFlag.CoverFontSize, "cover-font-size", 42, "cover image font size")
 	splitCmd.PersistentFlags().StringVar(&splitFlag.FontFile, "ttf", "tmp/No.73ShangShouFenBiTi-2.ttf", "ttf file")
