@@ -1,6 +1,7 @@
 package canvas
 
 import (
+	"github.com/juxuny/data-utils/log"
 	"github.com/pkg/errors"
 	"image"
 )
@@ -36,15 +37,18 @@ func (t *CenterLayout) Draw(img *image.RGBA, vector ...image.Point) error {
 	}
 	for i, c := range t.Children {
 		rect := c.Measure()
+		log.Debug(rect.Min)
 		vector := image.Point{}.Add(start)
 		vector = vector.Sub(rect.Min)
 		if centerType == CenterTypeAll || centerType == CenterTypeHorizontal {
 			vector.X += t.Rect.Dx() >> 1
 			vector.X -= rect.Dx() >> 1
+			vector.Y += rect.Min.Y
 		}
 		if centerType == CenterTypeAll || centerType == CenterTypeVertical {
 			vector.Y += t.Rect.Dy() >> 1
 			vector.Y -= rect.Dy() >> 1
+			vector.X += rect.Min.X
 		}
 		if err := c.Draw(img, vector); err != nil {
 			return errors.Wrapf(err, "draw child(%d) failed", i)

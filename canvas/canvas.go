@@ -43,6 +43,11 @@ func (t *Canvas) DrawColor(c string) error {
 	return nil
 }
 
+func (t *Canvas) DrawImage(img image.Image, rect image.Rectangle) error {
+	draw.Draw(t.Background, rect, img, image.ZP, draw.Over)
+	return nil
+}
+
 func (t *Canvas) DrawImageFromFile(point image.Point, file string) error {
 	f, err := os.Open(file)
 	if err != nil {

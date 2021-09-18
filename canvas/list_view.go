@@ -27,7 +27,6 @@ func (t *ListView) Draw(img *image.RGBA, vector ...image.Point) error {
 		}
 		start.Y += rect.Dy()
 	}
-
 	return nil
 }
 
@@ -44,7 +43,7 @@ func (t *ListView) Measure() image.Rectangle {
 			width = rect.Dx()
 		}
 	}
-	t.Rect = image.Rect(t.startPoint.X, t.startPoint.Y, width, height)
+	t.Rect = image.Rect(t.startPoint.X, t.startPoint.Y, t.startPoint.X+width, t.startPoint.Y+height)
 	t.measured = true
 	return t.Rect
 }

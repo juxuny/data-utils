@@ -23,6 +23,7 @@ var splitFlag = struct {
 	AutoRun           bool
 	Width             int
 	Height            int
+	Repeat            int // 电影部分重复播放次数
 
 	CoverFontSize        int
 	CoverFontColor       string
@@ -31,8 +32,6 @@ var splitFlag = struct {
 	DescriptionFontColor string
 	FontFile             string // 生成封面用的ttf文件
 	CoverDuration        int    // 封面单词汇总等待时长
-
-	MaxNum int // 最多分多少个文件
 
 	BlackList string // 黑名单，过滤掉没必要的词
 }{}
@@ -119,7 +118,7 @@ func init() {
 	splitCmd.PersistentFlags().StringVar(&splitFlag.HighlightColor, "color", "#f7db9f", "highlight color e.g #fff0cf")
 	splitCmd.PersistentFlags().StringVar(&splitFlag.FontFace, "face", "Cronos Pro Light", "font face. e.g Cronos Pro Light")
 	splitCmd.PersistentFlags().IntVar(&splitFlag.HighLightFontSize, "size", 52, "font size. 48")
-	splitCmd.PersistentFlags().IntVar(&splitFlag.ExpandSeconds, "expand", 5, "expand seconds")
+	splitCmd.PersistentFlags().IntVar(&splitFlag.ExpandSeconds, "expand", 1, "expand seconds")
 	splitCmd.PersistentFlags().StringVarP(&splitFlag.InputFile, "input", "i", "", "input video file")
 	splitCmd.PersistentFlags().StringVar(&splitFlag.OutExt, "ext", "mp4", "output video type")
 	splitCmd.PersistentFlags().IntVar(&splitFlag.GlobalFontSize, "global-size", 48, "global font size")
@@ -132,10 +131,10 @@ func init() {
 	splitCmd.PersistentFlags().StringVar(&splitFlag.CoverBg, "bg", "#000000", "cover background color")
 	splitCmd.PersistentFlags().StringVar(&splitFlag.CoverFontColor, "cover-color", "#FFFFFF", "cover font color")
 	splitCmd.PersistentFlags().IntVar(&splitFlag.CoverDuration, "cover-duration", 3, "cover duration, seconds")
+	splitCmd.PersistentFlags().IntVar(&splitFlag.Repeat, "repeat", 1, "repeat times")
 
 	splitCmd.PersistentFlags().IntVar(&splitFlag.DescriptionFontSize, "desc-font-size", 42, "translation font size")
 	splitCmd.PersistentFlags().StringVar(&splitFlag.DescriptionFontColor, "desc-font-color", "#FFFFFF", "translation font color")
-	splitCmd.PersistentFlags().IntVar(&splitFlag.MaxNum, "max-num", -1, "max number of split segment")
 
 	splitCmd.PersistentFlags().StringVar(&splitFlag.BlackList, "black-list", "tmp/dict/black.txt", "black list file")
 
