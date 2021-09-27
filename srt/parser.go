@@ -10,6 +10,8 @@ import (
 	"time"
 )
 
+var ZeroTime = now.BeginningOfDay()
+
 type Block struct {
 	Id        int64
 	StartTime time.Time
@@ -34,7 +36,7 @@ func parseInterval(data string) (startTime, endTime time.Time, err error) {
 		return
 	}
 	parseTime := func(timeString string) (time.Time, error) {
-		var ret = now.BeginningOfDay()
+		var ret = ZeroTime
 		s := strings.ReplaceAll(timeString, ":", ",")
 		l := strings.Split(s, ",")
 		var nums []int

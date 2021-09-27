@@ -26,6 +26,7 @@ var splitFlag = struct {
 	Repeat            int // 电影部分重复播放次数
 	MaxWords          int // 一个句子最多几个单词
 
+	// cover
 	CoverFontSize        int
 	CoverFontColor       string
 	CoverBg              string
@@ -33,6 +34,8 @@ var splitFlag = struct {
 	DescriptionFontColor string
 	FontFile             string // 生成封面用的ttf文件
 	CoverDuration        int    // 封面单词汇总等待时长
+	CoverWidth           int
+	CoverHeight          int
 
 	BlackList string // 黑名单，过滤掉没必要的词
 }{}
@@ -57,14 +60,14 @@ var splitCmd = &cobra.Command{
 			log.Fatal(err)
 		}
 
-		dictCET6, err := dict.LoadDict(splitFlag.DataFileCet6)
-		if err != nil {
-			log.Fatal(err)
-		}
+		//dictCET6, err := dict.LoadDict(splitFlag.DataFileCet6)
+		//if err != nil {
+		//	log.Fatal(err)
+		//}
 		//log.Info(dictCET6)
 		//log.Info(dictCET6)
 		log.Info("load CET4 words: ", len(dictCET4.Data))
-		log.Info("load CET6 words: ", len(dictCET6.Data))
+		//log.Info("load CET6 words: ", len(dictCET6.Data))
 		log.Info("load black list")
 		blackList, err := dict.LoadBlackList(splitFlag.BlackList)
 		if err != nil {
@@ -72,10 +75,10 @@ var splitCmd = &cobra.Command{
 		}
 		if len(blackList) > 0 {
 			dictCET4.Remove(blackList...)
-			dictCET6.Remove(blackList...)
+			//dictCET6.Remove(blackList...)
 		}
 		log.Info("remain CET4 words: ", len(dictCET4.Data))
-		log.Info("remain CET6 words: ", len(dictCET6.Data))
+		//log.Info("remain CET6 words: ", len(dictCET6.Data))
 
 		// convert srt subtitle
 		if err := convertSrt(splitFlag.InSrt, splitFlag.OutSrt, func(content string) (words []dict.Word) {
@@ -94,9 +97,9 @@ var splitCmd = &cobra.Command{
 		for w, v := range dictCET4.Data {
 			mergedDict.Data[w] = v
 		}
-		for w, v := range dictCET6.Data {
-			mergedDict.Data[w] = v
-		}
+		//for w, v := range dictCET6.Data {
+		//	mergedDict.Data[w] = v
+		//}
 		if err := generateCoverImage(mergedDict); err != nil {
 			log.Fatal(err)
 		}
@@ -125,15 +128,18 @@ func init() {
 	splitCmd.PersistentFlags().IntVar(&splitFlag.GlobalFontSize, "global-size", 48, "global font size")
 	splitCmd.PersistentFlags().BoolVar(&splitFlag.AutoRun, "auto-run", false, "auto run the split script")
 	splitCmd.PersistentFlags().IntVar(&splitFlag.Width, "width", 1920, "video resolution width")
-	splitCmd.PersistentFlags().IntVar(&splitFlag.Height, "height", 3414, "video resolution height")
+	splitCmd.PersistentFlags().IntVar(&splitFlag.Height, "height", 3264, "video resolution height")
 	splitCmd.PersistentFlags().IntVar(&splitFlag.MaxWords, "max-words", 3, "the maximum number of highlight word in one sentence")
+	splitCmd.PersistentFlags().IntVar(&splitFlag.Repeat, "repeat", 1, "repeat times")
 
+	// cover
 	splitCmd.PersistentFlags().IntVar(&splitFlag.CoverFontSize, "cover-font-size", 42, "cover image font size")
 	splitCmd.PersistentFlags().StringVar(&splitFlag.FontFile, "ttf", "tmp/No.73ShangShouFenBiTi-2.ttf", "ttf file")
 	splitCmd.PersistentFlags().StringVar(&splitFlag.CoverBg, "bg", "#000000", "cover background color")
 	splitCmd.PersistentFlags().StringVar(&splitFlag.CoverFontColor, "cover-color", "#FFFFFF", "cover font color")
 	splitCmd.PersistentFlags().IntVar(&splitFlag.CoverDuration, "cover-duration", 3, "cover duration, seconds")
-	splitCmd.PersistentFlags().IntVar(&splitFlag.Repeat, "repeat", 1, "repeat times")
+	splitCmd.PersistentFlags().IntVar(&splitFlag.CoverWidth, "cover-width", 1242, "cover image width")
+	splitCmd.PersistentFlags().IntVar(&splitFlag.CoverHeight, "cover-height", 2208, "cover image height")
 
 	splitCmd.PersistentFlags().IntVar(&splitFlag.DescriptionFontSize, "desc-font-size", 42, "translation font size")
 	splitCmd.PersistentFlags().StringVar(&splitFlag.DescriptionFontColor, "desc-font-color", "#FFFFFF", "translation font color")

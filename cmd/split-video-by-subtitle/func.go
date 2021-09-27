@@ -10,7 +10,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"image"
-	"image/color"
 	"io/ioutil"
 	"math/rand"
 	"os"
@@ -147,13 +146,18 @@ func getPadConfig() string {
 	return fmt.Sprintf("%d:%d:0:(%d-ih)/2:black", splitFlag.Width, splitFlag.Height, splitFlag.Height)
 }
 
+func getOutPutDir() string {
+	ext := path.Ext(splitFlag.InputFile)
+	return strings.TrimRight(splitFlag.InputFile, ext) + ".d"
+}
+
 func generateSplitScript(srtFile string, data []*SplitConfigData) error {
 	script := ""
 	ext := path.Ext(splitFlag.InputFile)
 	outScript := getSplitScriptFileName()
 	outDir := strings.TrimRight(splitFlag.InputFile, ext) + ".d"
 	cropVideo := path.Join(outDir, strings.TrimRight(path.Base(splitFlag.InputFile), ext)+".crop."+splitFlag.OutExt)
-	outVideo := path.Join(outDir, strings.TrimRight(path.Base(splitFlag.InputFile), ext)+"."+splitFlag.OutExt)
+	//outVideo := path.Join(outDir, strings.TrimRight(path.Base(splitFlag.InputFile), ext)+"."+splitFlag.OutExt)
 	if stat, err := os.Stat(outDir); os.IsNotExist(err) {
 		if err := os.MkdirAll(outDir, 0755); err != nil {
 			return errors.Wrap(err, "create output directory failed")
@@ -166,15 +170,17 @@ func generateSplitScript(srtFile string, data []*SplitConfigData) error {
 	//script += fmt.Sprintf("ffmpeg -y -i '%s' -vf subtitles='%s' '%s';", splitFlag.InputFile, srtFile, outVideo)
 	//script += fmt.Sprintf("fi\n")
 
+	script += fmt.Sprintf("set -e\n")
+
 	// 增加黑边
 	script += fmt.Sprintf("if [  ! -f %s ]; then ", cropVideo)
 	script += fmt.Sprintf("ffmpeg -y -i '%s' -vf 'pad=%s' '%s';", splitFlag.InputFile, getPadConfig(), cropVideo)
 	script += fmt.Sprintf("fi\n")
 
 	// 增加字幕
-	script += fmt.Sprintf("if [  ! -f %s ]; then ", outVideo)
-	script += fmt.Sprintf("ffmpeg -y -i '%s' -vf subtitles='%s' '%s';", splitFlag.InputFile, srtFile, outVideo)
-	script += fmt.Sprintf("fi\n")
+	//script += fmt.Sprintf("if [  ! -f %s ]; then ", outVideo)
+	//script += fmt.Sprintf("ffmpeg -y -i '%s' -vf subtitles=%s:force_style=\\'MarginV=80\\' '%s';", cropVideo, srtFile, outVideo)
+	//script += fmt.Sprintf("fi\n")
 
 	//generate split command
 	for _, d := range data {
@@ -192,14 +198,17 @@ func generateSplitScript(srtFile string, data []*SplitConfigData) error {
 		duration := ZeroTime.Add(end.Sub(start)).Format(timeLayout)
 		script += fmt.Sprintf(
 			"ffmpeg -y -i '%s' -ss %s -t %s '%s'\n",
-			outVideo,
+			cropVideo,
 			start.Format(timeLayout),
 			duration,
 			outSplit+".crop.mp4",
 		)
 		script += fmt.Sprintf(
+			"ffmpeg -y -i '%s' -vf subtitles=%s:force_style=\\'MarginV=80\\' '%s'\n", outSplit+".crop.mp4", outSplit+".srt", outSplit+".subtitle.mp4",
+		)
+		script += fmt.Sprintf(
 			"ffmpeg -y -i '%s' -f mpegts '%s'\n",
-			outSplit+".crop.mp4",
+			outSplit+".subtitle.mp4",
 			outSplit+".crop.ts",
 		)
 		script += fmt.Sprintf(
@@ -234,7 +243,7 @@ func generateCoverImageOne(outImg string, data SplitConfigData, dictData *dict.D
 	}
 	if _, err := os.Stat(outImg); os.IsNotExist(err) {
 		log.Info("generate cover:", outImg)
-		c := canvas.NewCanvas(splitFlag.Width, splitFlag.Height)
+		c := canvas.NewCanvas(splitFlag.CoverWidth, splitFlag.CoverHeight)
 		//if strings.Index(splitFlag.CoverBg, "#") == 0 {
 		//	if err := c.DrawColor(splitFlag.CoverBg); err != nil {
 		//		log.Warn(err)
@@ -251,7 +260,8 @@ func generateCoverImageOne(outImg string, data SplitConfigData, dictData *dict.D
 		//		return errors.Wrapf(err, "generate cover failed, block id=%d", data.Id)
 		//	}
 		//}
-		_ = c.DrawColor("#000000")
+		//_ = c.DrawColor("#000000")
+		_ = c.DrawImageFromFile(image.Pt(0, 0), "tmp/image/sun.png")
 		textPadding := 100
 		lv := canvas.CreateListView(textPadding, textPadding, []canvas.View{})
 		for _, w := range words {
@@ -259,10 +269,10 @@ func generateCoverImageOne(outImg string, data SplitConfigData, dictData *dict.D
 				log.Warn(err)
 				continue
 			}
-			if err := lv.AppendChild(canvas.CreateWrapTextView(w.Description, splitFlag.FontFile, splitFlag.DescriptionFontSize, splitFlag.DescriptionFontColor, splitFlag.Width-textPadding*2, nil)); err != nil {
-				log.Warn(err)
-				continue
-			}
+			//if err := lv.AppendChild(canvas.CreateWrapTextView(w.Description, splitFlag.FontFile, splitFlag.DescriptionFontSize, splitFlag.DescriptionFontColor, splitFlag.Width-textPadding*2, nil)); err != nil {
+			//	log.Warn(err)
+			//	continue
+			//}
 		}
 		var h = 810 // 电影视频源高度
 		rect := lv.Measure()
@@ -272,10 +282,9 @@ func generateCoverImageOne(outImg string, data SplitConfigData, dictData *dict.D
 		log.Debug(h)
 		h += textPadding * 2
 		paddingHeight := (splitFlag.Height - h) / 2
-		_ = c.DrawImage(image.NewUniform(color.White), image.Rect(0, paddingHeight, splitFlag.Width, paddingHeight+h))
-		//_ = c.DrawImage(image.NewUniform(color.White), image.Rect(0, 0, textPadding, textPadding))
-		box := canvas.CreateCenterLayout(canvas.CenterTypeHorizontal, image.Pt(0, paddingHeight), splitFlag.Width, h, lv)
-		center := canvas.CreateCenterLayout(canvas.CenterTypeVertical, image.Pt(0, 0), splitFlag.Width, splitFlag.Height, box)
+
+		box := canvas.CreateCenterLayout(canvas.CenterTypeHorizontal, image.Pt(0, paddingHeight), splitFlag.CoverWidth, h, lv)
+		center := canvas.CreateCenterLayout(canvas.CenterTypeVertical, image.Pt(0, 0), splitFlag.CoverWidth, splitFlag.CoverHeight, box)
 		if err := c.Draw(center); err != nil {
 			log.Error(err)
 			return errors.Wrapf(err, "render word failed, block id: %d", data.Id)
@@ -409,6 +418,23 @@ func randomSampleWords(words []dict.Word, num int) []dict.Word {
 	return ret
 }
 
+func generateSplitSrt(block srt.Block) {
+	outDir := getOutPutDir()
+	if _, err := os.Stat(outDir); os.IsNotExist(err) {
+		_ = os.MkdirAll(outDir, 0766)
+	}
+	ext := path.Ext(splitFlag.InputFile)
+	splitSrt := path.Join(outDir, strings.TrimRight(path.Base(splitFlag.InputFile), ext)+fmt.Sprintf(".%d.srt", block.Id))
+	var detail = block.StartTime.Sub(srt.ZeroTime)
+	detail -= detail % time.Second
+	block.Id = 1
+	block.StartTime = block.StartTime.Add(-detail)
+	block.EndTime = block.EndTime.Add(-detail)
+	if err := ioutil.WriteFile(splitSrt, []byte(block.String()), 0655); err != nil {
+		log.Error(err)
+	}
+}
+
 // 转换字幕
 func convertSrt(inFile, outFile string, filter CetFilter) error {
 	inData, err := ioutil.ReadFile(inFile)
@@ -461,8 +487,7 @@ func convertSrt(inFile, outFile string, filter CetFilter) error {
 					n.Content,
 					[]byte(w.Name),
 					[]byte(fmt.Sprintf(
-						"<font face=\"%s\" size=\"%d\" color=\"%s\"><b>%s</b></font>",
-						splitFlag.FontFace,
+						"<font size=\"%d\" color=\"%s\"><b>%s</b></font>",
 						splitFlag.HighLightFontSize,
 						splitFlag.HighlightColor,
 						w.Name,
@@ -471,6 +496,9 @@ func convertSrt(inFile, outFile string, filter CetFilter) error {
 			}
 			return false
 		})
+		if _, found := splitDataMap[b.Id]; found {
+			generateSplitSrt(b)
+		}
 	}
 
 	mergedSplitData := mergeSplitConfigData(splitDataMap)
