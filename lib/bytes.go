@@ -59,3 +59,33 @@ func IsQuoted(data []byte) bool {
 	}
 	return data[0] == '"' && data[len(data)-1] == '"'
 }
+
+func (_Byte) Trim(data []byte, cut []byte) (ret []byte) {
+	s := 0
+	for {
+		if s+len(cut) > len(data) {
+			break
+		}
+		if Byte.CompareSlice(data[s:(s+len(cut))], cut) {
+			s += len(cut)
+		} else {
+			break
+		}
+	}
+	end := len(data)
+	for {
+		if end <= 0 {
+			end = 0
+			break
+		}
+		if Byte.CompareSlice(data[end-len(cut):end], cut) {
+			end -= len(cut)
+		} else {
+			break
+		}
+	}
+	if s >= end {
+		return []byte{}
+	}
+	return data[s:end]
+}
