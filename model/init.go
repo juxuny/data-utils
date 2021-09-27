@@ -45,6 +45,7 @@ var defaultConfig Config
 
 func Open(config ...Config) (db *DB, err error) {
 	finalConfig := defaultConfig
+	log.Debug(finalConfig)
 	if len(config) > 0 {
 		finalConfig = config[0]
 	}

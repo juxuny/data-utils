@@ -8,7 +8,6 @@ import (
 	"github.com/juxuny/data-utils/log"
 	"github.com/juxuny/data-utils/srt"
 	"github.com/pkg/errors"
-	"github.com/spf13/cobra"
 	"image"
 	"io/ioutil"
 	"math/rand"
@@ -23,15 +22,6 @@ const intervalLayout = "15:04:05.000"
 const timeLayout = "15:04:05"
 
 var ZeroTime, _ = time.Parse(intervalLayout, "00:00:00.000")
-
-var globalFlag = struct {
-	Verbose bool
-}{}
-
-func initGlobalFlag(cmd *cobra.Command) {
-	cmd.PersistentFlags().BoolVarP(&globalFlag.Verbose, "verbose", "v", false, "display debug output")
-
-}
 
 type CetFilter func(content string) (words []dict.Word)
 
@@ -530,4 +520,21 @@ func convertSrt(inFile, outFile string, filter CetFilter) error {
 	}
 	log.Info("generate script finished")
 	return nil
+}
+
+func loadFileList(dir string, ext string) (ret []string, err error) {
+	fileList, err := ioutil.ReadDir(dir)
+	if err != nil {
+		return nil, err
+	}
+	for _, item := range fileList {
+		if item.IsDir() {
+			continue
+		}
+
+		if strings.Trim(path.Ext(item.Name()), ".") == strings.Trim(ext, ".") {
+			ret = append(ret, path.Join(dir, item.Name()))
+		}
+	}
+	return ret, nil
 }

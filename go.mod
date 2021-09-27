@@ -5,6 +5,7 @@ go 1.16
 require (
 	github.com/PuerkitoBio/goquery v1.5.1
 	github.com/djimenez/iconv-go v0.0.0-20160305225143-8960e66bd3da
+	github.com/fatih/camelcase v1.0.0
 	github.com/gamexg/proxyclient v0.0.0-20210207161252-499908056324
 	github.com/ghodss/yaml v1.0.0
 	github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0

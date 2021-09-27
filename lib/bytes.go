@@ -89,3 +89,13 @@ func (_Byte) Trim(data []byte, cut []byte) (ret []byte) {
 	}
 	return data[s:end]
 }
+
+func (_Byte) Drop(data []byte, filter func(r rune) bool) []byte {
+	ret := make([]byte, 0)
+	for _, x := range data {
+		if filter(rune(x)) {
+			ret = append(ret, x)
+		}
+	}
+	return ret
+}

@@ -5,10 +5,14 @@ import (
 	"github.com/jinzhu/now"
 	"github.com/juxuny/data-utils/lib"
 	"github.com/pkg/errors"
+	"io/ioutil"
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
 )
+
+const IntervalFormat = "15:04:05.000"
 
 var ZeroTime = now.BeginningOfDay()
 
@@ -22,7 +26,15 @@ type Block struct {
 func (t Block) String() string {
 	ret := make([]string, 0)
 	ret = append(ret, fmt.Sprintf("%v", t.Id))
-	ret = append(ret, fmt.Sprintf("%s --> %s", t.StartTime.Format("15:04:05.000"), t.EndTime.Format("15:04:05.000")))
+	ret = append(ret, fmt.Sprintf("%s --> %s", t.StartTime.Format(IntervalFormat), t.EndTime.Format(IntervalFormat)))
+	for _, sub := range t.Subtitle {
+		ret = append(ret, sub.String())
+	}
+	return strings.Join(ret, "\n")
+}
+
+func (t Block) Content() string {
+	ret := make([]string, 0)
 	for _, sub := range t.Subtitle {
 		ret = append(ret, sub.String())
 	}
@@ -76,10 +88,11 @@ func parseInterval(data string) (startTime, endTime time.Time, err error) {
 func parseBlock(blockData string) (Block, error) {
 	var err error
 	var ret Block
-	lines := strings.Split(blockData, "\n")
-	lines = lib.StringSlice(lines).Filter(func(item string) bool {
-		return item != ""
-	})
+	splitCutSet := "\n"
+	lines := strings.Split(blockData, splitCutSet)
+	//lines = lib.StringSlice(lines).Filter(func(item string) bool {
+	//	return item != ""
+	//})
 	if len(lines) > 0 {
 		if v, err := strconv.ParseInt(lines[0], 10, 64); err != nil {
 			return ret, errors.Wrapf(err, "invalid block id: %v", lines[0])
@@ -103,11 +116,73 @@ func parseBlock(blockData string) (Block, error) {
 	return ret, nil
 }
 
+func preHandle(data []byte) []byte {
+	data = lib.Byte.Drop(data, func(r rune) bool {
+		return r != 0
+	})
+	i := 0
+	for i < len(data) {
+		if unicode.IsDigit(rune(data[i])) {
+			break
+		}
+		i += 1
+	}
+	return data[i:]
+}
+
+/*
+修复这种情况：
+1927
+00:43:55,100 --> 00:43:57,420
+<font face="Pingfang SC" size="20"><b><font size="18"><font color="#ffffff">阿
+奇
+伯
+德
+·
+格
+雷
+西</font></font></b></font>
+
+1928
+00:43:55,100 --> 00:43:57,420
+<font face="Pingfang SC" size="20"><b><font size="16"><font color="#ffffff">上
+校
+
+作
+家</font></font></b></font>
+
+*/
+func fix(blocks []string) []string {
+	ret := make([]string, 0)
+	buf := blocks[0]
+	i := 1
+	for i < len(blocks) {
+		if unicode.IsNumber(rune(blocks[i][0])) {
+			ret = append(ret, buf)
+			buf = blocks[i]
+		} else {
+			buf += "\n\n" + blocks[i]
+		}
+		i++
+	}
+	if buf != "" {
+		ret = append(ret, buf)
+	}
+	return ret
+}
+
 func Parse(data []byte) ([]Block, error) {
-	blocks := strings.Split(string(data), "\n\n")
+	data = preHandle(data)
+	data = []byte(strings.ReplaceAll(string(data), "\r\n", "\n"))
+	splitCharset := "\n\n"
+	//if strings.Contains(string(data), "\r\n") {
+	//	splitCharset = "\r\n\r\n"
+	//}
+	blocks := strings.Split(string(data), splitCharset)
 	blocks = lib.StringSlice(blocks).Filter(func(item string) bool {
 		return item != ""
 	})
+	blocks = fix(blocks)
 	ret := make([]Block, 0)
 	for index, item := range blocks {
 		if b, err := parseBlock(item); err == nil {
@@ -117,4 +192,12 @@ func Parse(data []byte) ([]Block, error) {
 		}
 	}
 	return ret, nil
+}
+
+func ParseFile(file string) ([]Block, error) {
+	data, err := ioutil.ReadFile(file)
+	if err != nil {
+		return nil, errors.Wrap(err, "load srt file failed")
+	}
+	return Parse(data)
 }

@@ -35,3 +35,13 @@ func TestParseInterval(t *testing.T) {
 	t.Log(start.Format("15:04:05.000"))
 	t.Log(end.Format("15:04:05.000"))
 }
+
+func TestParseFile(t *testing.T) {
+	blocks, err := ParseFile("泰坦尼克号.srt")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, b := range blocks {
+		t.Log(b)
+	}
+}

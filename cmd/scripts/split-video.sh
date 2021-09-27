@@ -5,7 +5,7 @@ source cmd/scripts/.env
 # shellcheck disable=SC2046
 #eval $(go run github.com/juxuny/data-utils/cmd/ad-email set-proxy --user=${PROXY_USER} --pass=${PROXY_PASS})
 go run github.com/juxuny/data-utils/cmd/split-video-by-subtitle \
-  split -i '/Users/juxuny/Downloads/Kung.Fu.Panda.2008.1080p.BluRay.x264.DTS-FGT/KF_2.mp4' \
+  split -i '/Users/juxuny/Downloads/Kung.Fu.Panda.2008.1080p.BluRay.x264.DTS-FGT/KF_3.mp4' \
   --in-srt 'tmp/eng.srt' \
   --out-srt 'tmp/eng.converted.srt' \
   --size=14 \
@@ -16,7 +16,7 @@ go run github.com/juxuny/data-utils/cmd/split-video-by-subtitle \
   --cover-font-size 150 \
   --desc-font-color '#393939' \
   --desc-font-size 80 \
-  --repeat=3 \
+  --repeat=1 \
   --expand=1 \
-  --max-words=3 \
+  --max-words=1 \
   "$@"
