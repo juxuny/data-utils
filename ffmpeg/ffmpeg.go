@@ -2,6 +2,7 @@ package ffmpeg
 
 import (
 	"fmt"
+	"github.com/juxuny/data-utils/log"
 	"github.com/pkg/errors"
 	"os"
 	"os/exec"
@@ -47,7 +48,17 @@ Input #0, matroska,webm, from 'The.Prince.of.Egypt.1998.mkv':
       title           : 中文字幕『en580.com』
 */
 type VideoInfo struct {
-	Streams StreamList
+	Streams StreamList `json:"streams"`
+}
+
+func (t *VideoInfo) GetSubtitleStream() StreamList {
+	ret := make(StreamList, 0)
+	for _, s := range t.Streams {
+		if s.CodecType == CodecTypeSubtitle {
+			ret = append(ret, s)
+		}
+	}
+	return ret
 }
 
 type CodecType string
@@ -122,6 +133,7 @@ func ExtractSubtitle(fileName string, outFile string, streamIndex int) error {
 	cmd := exec.Command("ffmpeg", "-y", "-i", fileName, "-map", fmt.Sprintf("0:s:%d", streamIndex), outFile)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
+	log.Debug(cmd.String())
 	if err := cmd.Start(); err != nil {
 		return errors.Wrap(err, "extract subtitle failed")
 	}

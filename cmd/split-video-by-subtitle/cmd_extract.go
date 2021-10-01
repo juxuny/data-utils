@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"github.com/juxuny/data-utils/ffmpeg"
 	"github.com/juxuny/data-utils/log"
 	"github.com/pkg/errors"
@@ -28,7 +29,7 @@ func (t *extractCmd) initFlag(cmd *cobra.Command) {
 func (t *extractCmd) extractSubtitle(videoDir string, inputFileName string, outDir string, streamIndex int) error {
 	ext := path.Ext(inputFileName)
 	baseName := strings.TrimRight(inputFileName, ext)
-	outSubtitle := path.Join(outDir, baseName+".srt")
+	outSubtitle := path.Join(outDir, baseName+fmt.Sprintf(".%d", streamIndex)+".srt")
 	in := path.Join(videoDir, inputFileName)
 	return ffmpeg.ExtractSubtitle(in, outSubtitle, streamIndex)
 }
@@ -56,10 +57,11 @@ func (t *extractCmd) Build() *cobra.Command {
 						log.Error(err)
 						return errors.Wrap(err, "invalid video")
 					}
-					for _, s := range videoInfo.Streams {
+					subtitleStreams := videoInfo.GetSubtitleStream()
+					for index, s := range subtitleStreams {
 						if s.CodecType == ffmpeg.CodecTypeSubtitle && s.Tags[ffmpeg.TagKey.Language] == "eng" {
 							log.Debug(s.Tags[ffmpeg.TagKey.Title], s.Tags[ffmpeg.TagKey.Language])
-							t.extractSubtitle(baseDir, d.Name(), t.Flag.OutDir, s.Index)
+							t.extractSubtitle(baseDir, d.Name(), t.Flag.OutDir, index)
 						}
 					}
 				}
