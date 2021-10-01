@@ -1,7 +1,10 @@
 package ffmpeg
 
 import (
+	"fmt"
 	"github.com/pkg/errors"
+	"os"
+	"os/exec"
 )
 
 // VideoInfo
@@ -47,12 +50,12 @@ type VideoInfo struct {
 	Streams StreamList
 }
 
-type StreamType string
+type CodecType string
 
 const (
-	StreamTypeVideo    = StreamType("Video")
-	StreamTypeAudio    = StreamType("Audio")
-	StreamTypeSubtitle = StreamType("Subtitle")
+	CodecTypeVideo    = CodecType("video")
+	CodecTypeAudio    = CodecType("audio")
+	CodecTypeSubtitle = CodecType("subtitle")
 )
 
 type StreamList []Stream
@@ -62,7 +65,7 @@ type Stream struct {
 	CodecName          string       `json:"codec_name"`
 	CodecLongName      string       `json:"codec_long_name"`
 	Profile            string       `json:"profile"`
-	CodecType          string       `json:"codec_type"`
+	CodecType          CodecType    `json:"codec_type"`
 	CodecTimeBase      string       `json:"codec_time_base"`
 	CodecTagString     string       `json:"codec_tag_string"`
 	CodecTag           string       `json:"codec_tag"`
@@ -113,4 +116,14 @@ func GetVideoInfo(fileName string) (videoInfo *VideoInfo, err error) {
 		return nil, errors.Wrap(err, "get video info by ffprobe failed")
 	}
 	return parseData(data)
+}
+
+func ExtractSubtitle(fileName string, outFile string, streamIndex int) error {
+	cmd := exec.Command("ffmpeg", "-y", "-i", fileName, "-map", fmt.Sprintf("0:s:%d", streamIndex), outFile)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err := cmd.Start(); err != nil {
+		return errors.Wrap(err, "extract subtitle failed")
+	}
+	return cmd.Wait()
 }
