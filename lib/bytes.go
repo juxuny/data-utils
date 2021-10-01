@@ -60,6 +60,13 @@ func IsQuoted(data []byte) bool {
 	return data[0] == '"' && data[len(data)-1] == '"'
 }
 
+func (_Byte) IsQuoted(data []byte) bool {
+	if len(data) == 0 {
+		return false
+	}
+	return data[0] == '"' && data[len(data)-1] == '"'
+}
+
 func (_Byte) Trim(data []byte, cut []byte) (ret []byte) {
 	s := 0
 	for {
