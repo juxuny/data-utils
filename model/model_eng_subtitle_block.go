@@ -1,6 +1,10 @@
 package model
 
-import "time"
+import (
+	"github.com/jinzhu/now"
+	"github.com/juxuny/data-utils/lib"
+	"time"
+)
 
 type EngSubtitleBlock struct {
 	Id             int64      `json:"id" gorm:"int(11);primary_key;auto_increment"`
@@ -11,6 +15,26 @@ type EngSubtitleBlock struct {
 	DurationExtend string     `json:"durationExtend" gorm:"type:varchar(200)"`
 	Content        string     `json:"content" gorm:"type:text"`
 	CreateTime     *time.Time `json:"createTime" gorm:"type:timestamp;default"`
+}
+
+func (t EngSubtitleBlock) MoveToBeginning() (ret EngSubtitleBlock, err error) {
+	ret = t
+	var zero = now.BeginningOfDay()
+	layout := "2006-01-02 15:04:05.000"
+	startTime, err := lib.Time.Parse(layout, zero.Format(lib.DayLayout)+" "+t.StartTime)
+	if err != nil {
+		return ret, err
+	}
+	endTime, err := lib.Time.Parse(layout, zero.Format(lib.DayLayout)+" "+t.EndTime)
+	if err != nil {
+		return ret, err
+	}
+	detail := startTime.Sub(zero)
+	detail -= detail % time.Second
+	ret.StartTime = startTime.Add(-detail).Format(lib.TimeInMillionLayout)
+	ret.EndTime = endTime.Add(-detail).Format(lib.TimeInMillionLayout)
+	//log.Debug(detail, startTime, endTime, " ", t.StartTime, " ", t.EndTime, " ", ret.StartTime, " ", ret.EndTime)
+	return
 }
 
 type EngSubtitleBlockList []EngSubtitleBlock

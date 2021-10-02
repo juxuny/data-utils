@@ -538,3 +538,9 @@ func loadFileList(dir string, ext string) (ret []string, err error) {
 	}
 	return ret, nil
 }
+
+func getFileNameWithoutExt(file string) string {
+	base := path.Base(file)
+	ext := path.Ext(file)
+	return strings.TrimRight(base, ext)
+}

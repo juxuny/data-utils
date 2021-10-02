@@ -73,7 +73,7 @@ func (t *importCmd) saveBlockList(fileName string, blocks []srt.Block) error {
 				SubtitleId:     subtitle.Id,
 				BlockId:        b.Id,
 				StartTime:      b.StartTime.Format(srt.IntervalFormat),
-				EndTime:        b.StartTime.Format(srt.IntervalFormat),
+				EndTime:        b.EndTime.Format(srt.IntervalFormat),
 				DurationExtend: "",
 				Content:        b.Content(),
 				CreateTime:     lib.Time.NowPointer(),
