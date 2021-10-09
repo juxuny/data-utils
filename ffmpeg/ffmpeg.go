@@ -61,6 +61,24 @@ func (t *VideoInfo) GetSubtitleStream() StreamList {
 	return ret
 }
 
+func (t *VideoInfo) GetVideoStream() StreamList {
+	list := make(StreamList, 0)
+	for _, item := range t.Streams {
+		if item.CodecType == CodecTypeVideo {
+			list = append(list, item)
+		}
+	}
+	return list
+}
+
+func (t *VideoInfo) GetVideoSize() (width, height int64, err error) {
+	list := t.GetVideoStream()
+	if len(list) == 0 {
+		return 0, 0, errors.Errorf("not found video stream")
+	}
+	return list[0].Width, list[0].Height, nil
+}
+
 type CodecType string
 
 const (

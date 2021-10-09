@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/juxuny/data-utils/ffmpeg"
 	"github.com/juxuny/data-utils/lib"
 	"github.com/juxuny/data-utils/log"
 	"github.com/juxuny/data-utils/model"
@@ -15,6 +16,7 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+	"unicode"
 )
 
 type searchCmd struct {
@@ -38,11 +40,12 @@ type SearchMode string
 const (
 	SearchModeBool   = SearchMode("bool")
 	SearchModeNormal = SearchMode("normal")
+	SearchModeLike   = SearchMode("like")
 )
 
 func (t SearchMode) IsValid() bool {
 	switch t {
-	case SearchModeNormal, SearchModeBool:
+	case SearchModeNormal, SearchModeBool, SearchModeLike:
 		return true
 	}
 	return false
@@ -92,6 +95,32 @@ func (t *searchCmd) getPadConfig() string {
 	return fmt.Sprintf("iw:(iw*(16/9)):0:((iw*(16/9))-ih)/2:black")
 }
 
+func (t *searchCmd) hasChinese(in string) bool {
+	for _, x := range in {
+		if unicode.Is(unicode.Han, x) {
+			return true
+		}
+	}
+	return false
+}
+
+func (t *searchCmd) getMarginV(rawVideoFile string) int {
+	videoInfo, err := ffmpeg.GetVideoInfo(rawVideoFile)
+	if err != nil {
+		log.Error(err)
+		return 0
+	}
+	width, height, err := videoInfo.GetVideoSize()
+	if err != nil {
+		log.Error(err)
+		return 0
+	}
+	outputHeight := int64(float64(width) * (float64(16) / float64(9)))
+
+	delta := (outputHeight - height) >> 1
+	return int(delta) >> 2
+}
+
 func (t *searchCmd) generateSplitScript(result SearchResult) {
 	script := "#!/bin/bash\nset -e\n"
 	// generate split script
@@ -113,12 +142,12 @@ func (t *searchCmd) generateSplitScript(result SearchResult) {
 		duration := srt.ZeroTime.Add(end.Sub(start)).Format(timeLayout)
 		out := path.Join(t.outDir, fmt.Sprintf("%s.split.%d.%s", name, item.Block.BlockId, t.Flag.OutExt))
 		script += fmt.Sprintf(
-			"if [ ! -f %s ]; then ffmpeg -y -i '%s' -ss %s -t %s -vf 'pad=%s' '%s'; fi\n",
+			"if [ ! -f %s ]; then ffmpeg -y -i '%s' -ss %s -t %s '%s'; fi\n",
 			out,
 			item.VideoFile,
 			start.Format(lib.TimeLayout),
 			duration,
-			t.getPadConfig(),
+			//t.getPadConfig(),
 			out,
 		)
 	}
@@ -127,14 +156,44 @@ func (t *searchCmd) generateSplitScript(result SearchResult) {
 		name := getFileNameWithoutExt(item.Subtitle.FileName)
 		splitFile := path.Join(t.outDir, fmt.Sprintf("%s.split.%d.%s", name, item.Block.BlockId, t.Flag.OutExt))
 		out := path.Join(t.outDir, fmt.Sprintf("%s.subtitle.%d.%s", name, item.Block.BlockId, t.Flag.OutExt))
-		srtFile := path.Join(t.outDir, item.Subtitle.FileName)
+		srtFile := path.Join(t.outDir, fmt.Sprintf("%s.%d.srt", name, item.Block.BlockId))
 		script += fmt.Sprintf(
-			"ffmpeg -y -i '%s' -vf subtitles=%s:force_style=\\'MarginV=0\\' '%s'\n",
+			"ffmpeg -y -i '%s' -vf subtitles=%s:force_style=\\'FontSize=16\\' '%s'\n",
 			splitFile,
 			srtFile,
 			out,
 		)
 	}
+	// padding
+	outList := make([]string, 0)
+	for _, item := range result.List {
+		name := getFileNameWithoutExt(item.Subtitle.FileName)
+		inFile := path.Join(t.outDir, fmt.Sprintf("%s.subtitle.%d.%s", name, item.Block.BlockId, t.Flag.OutExt))
+		out := path.Join(t.outDir, fmt.Sprintf("%s.pad.%d.%s", name, item.Block.BlockId, t.Flag.OutExt))
+		if t.hasChinese(out) {
+			if t.hasChinese(out) {
+				outList = append(outList, out)
+			}
+			script += fmt.Sprintf(
+				"ffmpeg -y -i '%s' -vf 'pad=%s' '%s'\n",
+				inFile,
+				t.getPadConfig(),
+				out,
+			)
+		}
+	}
+	// concat
+	mergedVideo := path.Join(t.outDir, "merged.mp4")
+	//script += fmt.Sprintf(
+	//	"ffmpeg -y -i 'concat:%s' -vf select=concatdec_select -af aselect=concatdec_select,aresample=async=1 '%s'\n",
+	//	strings.Join(outList, "|"),
+	//	mergedVideo,
+	//)
+	script += fmt.Sprintf(
+		"ffmpeg -y -i 'concat:%s' '%s'\n",
+		strings.Join(outList, "|"),
+		mergedVideo,
+	)
 	scriptFile := path.Join(t.outDir, "split.sh")
 	if err := ioutil.WriteFile(scriptFile, []byte(script), 0755); err != nil {
 		log.Fatal(err)
@@ -145,13 +204,21 @@ func (t *searchCmd) generateSplitScript(result SearchResult) {
 func (t *searchCmd) searchAndSaveResult() {
 	var blocks model.EngSubtitleBlockList
 	mode := "BOOLEAN"
-	if SearchMode(t.Flag.Mode) == SearchModeNormal {
+	var query string
+	var values []interface{}
+	searchMode := SearchMode(t.Flag.Mode)
+	if searchMode == SearchModeNormal {
 		mode = "NATURAL LANGUAGE"
-	}
-	query := fmt.Sprintf("SELECT * FROM eng_subtitle_block WHERE MATCH(content) AGAINST(? IN %s MODE) LIMIT ?", mode)
-	values := []interface{}{
-		t.Flag.Key,
-		t.Flag.Limit,
+		query = fmt.Sprintf("SELECT * FROM eng_subtitle_block WHERE MATCH(content) AGAINST(? IN %s MODE) LIMIT ?", mode)
+		values = append(values, t.Flag.Key, t.Flag.Limit)
+	} else if searchMode == SearchModeBool {
+		query = fmt.Sprintf("SELECT * FROM eng_subtitle_block WHERE MATCH(content) AGAINST(? IN %s MODE) LIMIT ?", mode)
+		values = append(values, t.Flag.Key, t.Flag.Limit)
+	} else if searchMode == SearchModeLike {
+		query = fmt.Sprintf("SELECT * FROM eng_subtitle_block WHERE content LIKE ? LIMIT ?")
+		values = append(values, fmt.Sprintf("%%%s%%", t.Flag.Key), t.Flag.Limit)
+	} else {
+		log.Fatal("invalid --mode=" + t.Flag.Mode)
 	}
 	rows, err := t.db.Raw(query, values...).Rows()
 	if err != nil {
@@ -240,7 +307,7 @@ func (t *searchCmd) searchAndSaveResult() {
 		if err != nil {
 			log.Fatal(err)
 		}
-		srtFormatData := fmt.Sprintf("%d\n%s ---> %s\n%s", beginningBlock.BlockId, beginningBlock.StartTime, beginningBlock.EndTime, beginningBlock.Content)
+		srtFormatData := fmt.Sprintf("%d\n%s --> %s\n%s", beginningBlock.BlockId, beginningBlock.StartTime, beginningBlock.EndTime, beginningBlock.Content)
 		if err := ioutil.WriteFile(outSrt, []byte(srtFormatData), 0644); err != nil {
 			log.Fatal(err)
 		}
