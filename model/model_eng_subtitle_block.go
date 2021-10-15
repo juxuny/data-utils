@@ -6,6 +6,10 @@ import (
 	"time"
 )
 
+func GetZero() time.Time {
+	return now.BeginningOfDay()
+}
+
 type EngSubtitleBlock struct {
 	Id             int64      `json:"id" gorm:"int(11);primary_key;auto_increment"`
 	SubtitleId     int64      `json:"subtitleId" gorm:"type:int(11)"`
@@ -19,7 +23,7 @@ type EngSubtitleBlock struct {
 
 func (t EngSubtitleBlock) MoveToBeginning() (ret EngSubtitleBlock, err error) {
 	ret = t
-	var zero = now.BeginningOfDay()
+	var zero = GetZero()
 	layout := "2006-01-02 15:04:05.000"
 	startTime, err := lib.Time.Parse(layout, zero.Format(lib.DayLayout)+" "+t.StartTime)
 	if err != nil {
@@ -34,6 +38,28 @@ func (t EngSubtitleBlock) MoveToBeginning() (ret EngSubtitleBlock, err error) {
 	ret.StartTime = startTime.Add(-detail).Format(lib.TimeInMillionLayout)
 	ret.EndTime = endTime.Add(-detail).Format(lib.TimeInMillionLayout)
 	//log.Debug(detail, startTime, endTime, " ", t.StartTime, " ", t.EndTime, " ", ret.StartTime, " ", ret.EndTime)
+	return
+}
+
+func (t EngSubtitleBlock) ExpendSubtitleDuration(seconds time.Duration) (ret EngSubtitleBlock, err error) {
+	ret = t
+	var zero = GetZero()
+	layout := "2006-01-02 15:04:05.000"
+	startTime, err := lib.Time.Parse(layout, zero.Format(lib.DayLayout)+" "+t.StartTime)
+	if err != nil {
+		return ret, err
+	}
+	startTime = startTime.Add(-seconds * time.Second)
+	if startTime.Before(zero) {
+		startTime = zero
+	}
+	endTime, err := lib.Time.Parse(layout, zero.Format(lib.DayLayout)+" "+t.EndTime)
+	if err != nil {
+		return ret, err
+	}
+	endTime = endTime.Add(seconds * time.Second)
+	ret.StartTime = startTime.Format(lib.TimeInMillionLayout)
+	ret.EndTime = endTime.Format(lib.TimeInMillionLayout)
 	return
 }
 

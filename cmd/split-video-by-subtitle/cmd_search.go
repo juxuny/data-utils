@@ -22,13 +22,14 @@ import (
 type searchCmd struct {
 	Flag struct {
 		globalFlag
-		SearchDir string
-		Key       string
-		ResultDir string // save the search result temporary
-		Mode      string // search mode
-		Limit     int    // limit the number of result
-		Ext       string
-		OutExt    string
+		SearchDir          string
+		Key                string
+		ResultDir          string // save the search result temporary
+		Mode               string // search mode
+		Limit              int    // limit the number of result
+		Ext                string
+		OutExt             string
+		NeedContainChinese bool // check if contain Chinese words
 	}
 
 	outDir string
@@ -60,6 +61,7 @@ func (t *searchCmd) initFlag(cmd *cobra.Command) {
 	cmd.PersistentFlags().IntVar(&t.Flag.Limit, "limit", 10, "limit number of result")
 	cmd.PersistentFlags().StringVar(&t.Flag.Ext, "ext", "mkv", "video type")
 	cmd.PersistentFlags().StringVar(&t.Flag.OutExt, "out-ext", "mp4", "output video extension")
+	cmd.PersistentFlags().BoolVar(&t.Flag.NeedContainChinese, "contain-chinese", false, "whether need contain Chinese words")
 }
 
 func (t *searchCmd) loadFileList(dir string) (list []string, err error) {
@@ -134,11 +136,16 @@ func (t *searchCmd) generateSplitScript(result SearchResult) {
 			log.Error(err)
 			continue
 		}
+		start = start.Add(-time.Second)
+		if start.Before(srt.ZeroTime) {
+			start = srt.ZeroTime
+		}
 		end, err := lib.Time.Parse(lib.TimeInMillionLayout, item.Block.EndTime)
 		if err != nil {
 			log.Error(err)
 			continue
 		}
+		end = end.Add(time.Second)
 		duration := srt.ZeroTime.Add(end.Sub(start)).Format(timeLayout)
 		out := path.Join(t.outDir, fmt.Sprintf("%s.split.%d.%s", name, item.Block.BlockId, t.Flag.OutExt))
 		script += fmt.Sprintf(
@@ -158,7 +165,7 @@ func (t *searchCmd) generateSplitScript(result SearchResult) {
 		out := path.Join(t.outDir, fmt.Sprintf("%s.subtitle.%d.%s", name, item.Block.BlockId, t.Flag.OutExt))
 		srtFile := path.Join(t.outDir, fmt.Sprintf("%s.%d.srt", name, item.Block.BlockId))
 		script += fmt.Sprintf(
-			"ffmpeg -y -i '%s' -vf subtitles=%s:force_style=\\'FontSize=16\\' '%s'\n",
+			"ffmpeg -y -i '%s' -vf subtitles='%s':force_style=\\'FontSize=16\\' '%s'\n",
 			splitFile,
 			srtFile,
 			out,
@@ -170,17 +177,24 @@ func (t *searchCmd) generateSplitScript(result SearchResult) {
 		name := getFileNameWithoutExt(item.Subtitle.FileName)
 		inFile := path.Join(t.outDir, fmt.Sprintf("%s.subtitle.%d.%s", name, item.Block.BlockId, t.Flag.OutExt))
 		out := path.Join(t.outDir, fmt.Sprintf("%s.pad.%d.%s", name, item.Block.BlockId, t.Flag.OutExt))
-		if t.hasChinese(out) {
-			if t.hasChinese(out) {
-				outList = append(outList, out)
-			}
-			script += fmt.Sprintf(
-				"ffmpeg -y -i '%s' -vf 'pad=%s' '%s'\n",
-				inFile,
-				t.getPadConfig(),
-				out,
-			)
+		if !t.Flag.NeedContainChinese || t.hasChinese(out) {
+			outList = append(outList, out)
 		}
+		script += fmt.Sprintf(
+			"ffmpeg -y -i '%s' -vf 'pad=%s' '%s'\n",
+			inFile,
+			t.getPadConfig(),
+			out,
+		)
+	}
+	// generate concat.list
+	concatFile := path.Join(t.outDir, "concat.list")
+	concatData := ""
+	for _, item := range outList {
+		concatData += fmt.Sprintf("file '%s'\n", item)
+	}
+	if err := ioutil.WriteFile(concatFile, []byte(concatData), 0755); err != nil {
+		log.Fatal(err)
 	}
 	// concat
 	mergedVideo := path.Join(t.outDir, "merged.mp4")
@@ -190,8 +204,8 @@ func (t *searchCmd) generateSplitScript(result SearchResult) {
 	//	mergedVideo,
 	//)
 	script += fmt.Sprintf(
-		"ffmpeg -y -i 'concat:%s' '%s'\n",
-		strings.Join(outList, "|"),
+		"ffmpeg -safe 0 -y -f concat -i '%s' '%s'\n",
+		concatFile,
 		mergedVideo,
 	)
 	scriptFile := path.Join(t.outDir, "split.sh")
@@ -307,7 +321,17 @@ func (t *searchCmd) searchAndSaveResult() {
 		if err != nil {
 			log.Fatal(err)
 		}
-		srtFormatData := fmt.Sprintf("%d\n%s --> %s\n%s", beginningBlock.BlockId, beginningBlock.StartTime, beginningBlock.EndTime, beginningBlock.Content)
+		beginningBlockExpend, err := beginningBlock.ExpendSubtitleDuration(1)
+		if err != nil {
+			log.Fatal(err)
+		}
+		srtFormatData := fmt.Sprintf(
+			"%d\n%s --> %s\n%s",
+			beginningBlockExpend.BlockId,
+			beginningBlockExpend.StartTime,
+			beginningBlockExpend.EndTime,
+			beginningBlockExpend.Content,
+		)
 		if err := ioutil.WriteFile(outSrt, []byte(srtFormatData), 0644); err != nil {
 			log.Fatal(err)
 		}
