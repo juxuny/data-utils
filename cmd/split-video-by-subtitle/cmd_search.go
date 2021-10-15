@@ -142,7 +142,7 @@ func (t *searchCmd) generateSplitScript(result SearchResult) {
 		duration := srt.ZeroTime.Add(end.Sub(start)).Format(timeLayout)
 		out := path.Join(t.outDir, fmt.Sprintf("%s.split.%d.%s", name, item.Block.BlockId, t.Flag.OutExt))
 		script += fmt.Sprintf(
-			"if [ ! -f %s ]; then ffmpeg -y -i '%s' -ss %s -t %s '%s'; fi\n",
+			"if [ ! -f '%s' ]; then ffmpeg -y -i '%s' -ss %s -t %s '%s'; fi\n",
 			out,
 			item.VideoFile,
 			start.Format(lib.TimeLayout),
@@ -315,6 +315,10 @@ func (t *searchCmd) searchAndSaveResult() {
 	// generate script
 	t.generateSplitScript(result)
 	log.Info("save search result in: " + out)
+	log.Info("result: ", len(blocks))
+	for _, b := range blocks {
+		log.Info(b.Content)
+	}
 }
 
 func (t *searchCmd) Build() *cobra.Command {
