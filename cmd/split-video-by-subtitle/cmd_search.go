@@ -144,6 +144,7 @@ func (t *searchCmd) generateSplitScript(result SearchResult) {
 			log.Error(err)
 			continue
 		}
+		end = end.Add(500 * time.Millisecond)
 		duration := srt.ZeroTime.Add(end.Sub(start)).Format(timeLayout)
 		out := path.Join(t.outDir, fmt.Sprintf("%s.split.%d.%s", name, item.Block.BlockId, t.Flag.OutExt))
 		script += fmt.Sprintf(
