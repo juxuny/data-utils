@@ -30,6 +30,7 @@ type searchCmd struct {
 		Ext                string
 		OutExt             string
 		NeedContainChinese bool // check if contain Chinese words
+		FontSize           int
 	}
 
 	outDir string
@@ -62,6 +63,7 @@ func (t *searchCmd) initFlag(cmd *cobra.Command) {
 	cmd.PersistentFlags().StringVar(&t.Flag.Ext, "ext", "mkv", "video type")
 	cmd.PersistentFlags().StringVar(&t.Flag.OutExt, "out-ext", "mp4", "output video extension")
 	cmd.PersistentFlags().BoolVar(&t.Flag.NeedContainChinese, "contain-chinese", false, "whether need contain Chinese words")
+	cmd.PersistentFlags().IntVar(&t.Flag.FontSize, "font-size", 18, "font size of subtitle")
 }
 
 func (t *searchCmd) loadFileList(dir string) (list []string, err error) {
@@ -164,9 +166,10 @@ func (t *searchCmd) generateSplitScript(result SearchResult) {
 		out := path.Join(t.outDir, fmt.Sprintf("%s.subtitle.%d.%s", name, item.Block.BlockId, t.Flag.OutExt))
 		srtFile := path.Join(t.outDir, fmt.Sprintf("%s.%d.srt", name, item.Block.BlockId))
 		script += fmt.Sprintf(
-			"ffmpeg -y -i '%s' -vf subtitles='%s':force_style=\\'FontSize=16\\' '%s'\n",
+			"ffmpeg -y -i '%s' -vf subtitles='%s':force_style=\\'FontSize=%d\\' '%s'\n",
 			splitFile,
 			srtFile,
+			t.Flag.FontSize,
 			out,
 		)
 	}
@@ -203,7 +206,7 @@ func (t *searchCmd) generateSplitScript(result SearchResult) {
 	//	mergedVideo,
 	//)
 	script += fmt.Sprintf(
-		"ffmpeg -safe 0 -y -f concat -i '%s' '%s'\n",
+		"# ffmpeg -safe 0 -y -f concat -i '%s' '%s'\n",
 		concatFile,
 		mergedVideo,
 	)
