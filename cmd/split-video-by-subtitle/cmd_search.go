@@ -127,25 +127,27 @@ func (t *searchCmd) generateSplitScript(result SearchResult) {
 	script := "#!/bin/bash\nset -e\n"
 	// generate split script
 	for _, item := range result.List {
-		//base := path.Base(item.VideoFile)
-		//ext := path.Ext(base)
-		//name := strings.TrimRight(base, ext)
+
 		name := getFileNameWithoutExt(item.Subtitle.FileName)
-		start, err := lib.Time.Parse(lib.TimeInMillionLayout, item.Block.StartTime)
+		beginningBlock, err := item.Block.MoveToBeginning()
+		if err != nil {
+			log.Fatal(err)
+		}
+		blockExpand, err := beginningBlock.ExpandSubtitleDuration(1)
+		if err != nil {
+			log.Error(err)
+			return
+		}
+		start, err := lib.Time.Parse(lib.TimeInMillionLayout, blockExpand.StartTime)
 		if err != nil {
 			log.Error(err)
 			continue
 		}
-		start = start.Add(-time.Second)
-		if start.Before(srt.ZeroTime) {
-			start = srt.ZeroTime
-		}
-		end, err := lib.Time.Parse(lib.TimeInMillionLayout, item.Block.EndTime)
+		end, err := lib.Time.Parse(lib.TimeInMillionLayout, blockExpand.EndTime)
 		if err != nil {
 			log.Error(err)
 			continue
 		}
-		end = end.Add(time.Second)
 		duration := srt.ZeroTime.Add(end.Sub(start)).Format(timeLayout)
 		out := path.Join(t.outDir, fmt.Sprintf("%s.split.%d.%s", name, item.Block.BlockId, t.Flag.OutExt))
 		script += fmt.Sprintf(
@@ -321,7 +323,7 @@ func (t *searchCmd) searchAndSaveResult() {
 		if err != nil {
 			log.Fatal(err)
 		}
-		beginningBlockExpend, err := beginningBlock.ExpendSubtitleDuration(1)
+		beginningBlockExpend, err := beginningBlock.ExpandSubtitleDuration(1)
 		if err != nil {
 			log.Fatal(err)
 		}

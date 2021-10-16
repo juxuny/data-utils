@@ -41,7 +41,7 @@ func (t EngSubtitleBlock) MoveToBeginning() (ret EngSubtitleBlock, err error) {
 	return
 }
 
-func (t EngSubtitleBlock) ExpendSubtitleDuration(seconds time.Duration) (ret EngSubtitleBlock, err error) {
+func (t EngSubtitleBlock) ExpandSubtitleDuration(seconds int64) (ret EngSubtitleBlock, err error) {
 	ret = t
 	var zero = GetZero()
 	layout := "2006-01-02 15:04:05.000"
@@ -49,7 +49,7 @@ func (t EngSubtitleBlock) ExpendSubtitleDuration(seconds time.Duration) (ret Eng
 	if err != nil {
 		return ret, err
 	}
-	startTime = startTime.Add(-seconds * time.Second)
+	startTime = startTime.Add(-time.Duration(seconds) * time.Second)
 	if startTime.Before(zero) {
 		startTime = zero
 	}
@@ -57,7 +57,7 @@ func (t EngSubtitleBlock) ExpendSubtitleDuration(seconds time.Duration) (ret Eng
 	if err != nil {
 		return ret, err
 	}
-	endTime = endTime.Add(seconds * time.Second)
+	endTime = endTime.Add(time.Duration(seconds) * time.Second)
 	ret.StartTime = startTime.Format(lib.TimeInMillionLayout)
 	ret.EndTime = endTime.Format(lib.TimeInMillionLayout)
 	return
