@@ -129,11 +129,7 @@ func (t *searchCmd) generateSplitScript(result SearchResult) {
 	for _, item := range result.List {
 
 		name := getFileNameWithoutExt(item.Subtitle.FileName)
-		beginningBlock, err := item.Block.MoveToBeginning()
-		if err != nil {
-			log.Fatal(err)
-		}
-		blockExpand, err := beginningBlock.ExpandSubtitleDuration(1)
+		blockExpand, err := item.Block.ExpandSubtitleDuration(1)
 		if err != nil {
 			log.Error(err)
 			return
@@ -323,16 +319,16 @@ func (t *searchCmd) searchAndSaveResult() {
 		if err != nil {
 			log.Fatal(err)
 		}
-		beginningBlockExpend, err := beginningBlock.ExpandSubtitleDuration(1)
-		if err != nil {
-			log.Fatal(err)
-		}
+		//beginningBlockExpend, err := beginningBlock.ExpandSubtitleDuration(1)
+		//if err != nil {
+		//	log.Fatal(err)
+		//}
 		srtFormatData := fmt.Sprintf(
 			"%d\n%s --> %s\n%s",
-			beginningBlockExpend.BlockId,
-			beginningBlockExpend.StartTime,
-			beginningBlockExpend.EndTime,
-			beginningBlockExpend.Content,
+			beginningBlock.BlockId,
+			beginningBlock.StartTime,
+			beginningBlock.EndTime,
+			beginningBlock.Content,
 		)
 		if err := ioutil.WriteFile(outSrt, []byte(srtFormatData), 0644); err != nil {
 			log.Fatal(err)
