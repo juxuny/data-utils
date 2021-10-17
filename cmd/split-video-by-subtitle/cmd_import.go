@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"github.com/jinzhu/gorm"
 	"github.com/juxuny/data-utils/lib"
 	"github.com/juxuny/data-utils/log"
@@ -107,6 +108,55 @@ func (t *importCmd) convertToSrt(dir string) error {
 	return nil
 }
 
+func (t *importCmd) importTvSeries(name string) error {
+	ext := path.Ext(name)
+	tvName := strings.TrimRight(name, ext)
+	series, err := os.ReadDir(path.Join(t.Flag.In, name))
+	if err != nil {
+		return errors.Wrap(err, "load TV series failed")
+	}
+	for _, item := range series {
+		if !item.IsDir() {
+			continue
+		}
+		resourcePath := path.Join(t.Flag.In, name, item.Name())
+		if err := t.importSubtitleResource(tvName, resourcePath); err != nil {
+			log.Error(err)
+			return errors.Wrap(err, "import subtitle resource failed")
+		}
+	}
+	return nil
+}
+
+func (t *importCmd) importSubtitleResource(name string, dir string) error {
+	log.Debug("importing: ", dir)
+	subtitleDirList, err := os.ReadDir(dir)
+	if err != nil {
+		log.Error(err)
+		return errors.Wrap(err, "load subtitle dir list failed")
+	}
+	for _, subtitleDir := range subtitleDirList {
+		dirExt := path.Ext(subtitleDir.Name())
+		if dirExt != ".subtitle" {
+			continue
+		}
+		srtList, err := os.ReadDir(path.Join(dir, subtitleDir.Name()))
+		if err != nil {
+			log.Error(err)
+			return errors.Wrap(err, "load subtitle dir failed")
+		}
+		for _, item := range srtList {
+			ext := path.Ext(item.Name())
+			if ext != ".srt" {
+				continue
+			}
+			file := path.Join(dir, subtitleDir.Name(), item.Name())
+			log.Debug(file)
+		}
+	}
+	return nil
+}
+
 func (t *importCmd) Build() *cobra.Command {
 	cmd := &cobra.Command{
 		Use: "import",
@@ -121,24 +171,29 @@ func (t *importCmd) Build() *cobra.Command {
 			if err != nil {
 				log.Fatal(err)
 			}
-			for _, moviePath := range fileList {
+			for i, moviePath := range fileList {
+				log.Info(fmt.Sprintf("%.02f%%", float64(i+1)/float64(len(fileList))*100))
 				stat, err := os.Stat(path.Join(t.Flag.In, moviePath.Name()))
 				if err != nil {
 					log.Error(err)
 					continue
 				}
 				if !stat.IsDir() {
-					log.Warn(moviePath, " is not a directory")
+					log.Warn("ignore: ", moviePath.Name(), " is not a directory")
 					continue
 				}
 				ext := path.Ext(moviePath.Name())
 				if ext == ".d" {
 					// It's a TV series
-
+					if err := t.importTvSeries(moviePath.Name()); err != nil {
+						log.Error(err)
+					}
 				} else {
-
+					if err := t.importSubtitleResource(moviePath.Name(), path.Join(t.Flag.In, moviePath.Name())); err != nil {
+						log.Error(err)
+					}
 				}
-				log.Debug("enter: ", moviePath.Name())
+				log.Debug("finished: ", moviePath.Name())
 				//if err := t.convertToSrt(path.Join(moviePath.Name(), "subtitle")); err != nil {
 				//	log.Fatal(err)
 				//}
