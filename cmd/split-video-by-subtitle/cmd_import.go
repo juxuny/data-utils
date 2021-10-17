@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"github.com/jinzhu/gorm"
 	"github.com/juxuny/data-utils/lib"
 	"github.com/juxuny/data-utils/log"
@@ -17,7 +16,7 @@ import (
 type importCmd struct {
 	Flag struct {
 		globalFlag
-		SrtDir string
+		In string
 	}
 
 	db *model.DB
@@ -25,7 +24,7 @@ type importCmd struct {
 
 func (t *importCmd) initFlag(cmd *cobra.Command) {
 	initGlobalFlag(cmd, &t.Flag.globalFlag)
-	cmd.PersistentFlags().StringVar(&t.Flag.SrtDir, "srt-dir", ".", "srt data directory")
+	cmd.PersistentFlags().StringVar(&t.Flag.In, "in", ".", "data directory")
 }
 
 func (t *importCmd) saveBlockList(fileName string, blocks []srt.Block) error {
@@ -117,32 +116,32 @@ func (t *importCmd) Build() *cobra.Command {
 			if err != nil {
 				log.Fatal(err)
 			}
-			stat, err := os.Stat(t.Flag.SrtDir)
-			if err != nil && os.IsNotExist(err) {
-				log.Fatal("not found: ", t.Flag.SrtDir)
-			}
-			if !stat.IsDir() {
-				log.Fatal(fmt.Sprintf("%s is not a directory", t.Flag.SrtDir))
-			}
 
-			// 把不是srt类型的文件转换成srt
-			if err := t.convertToSrt(t.Flag.SrtDir); err != nil {
-				log.Fatal(err)
-			}
-
-			fileList, err := loadFileList(t.Flag.SrtDir, "srt")
+			fileList, err := os.ReadDir(t.Flag.In)
 			if err != nil {
 				log.Fatal(err)
 			}
-			for _, f := range fileList {
-				log.Info("parsed file: ", f)
-				blocks, err := srt.ParseFile(f)
+			for _, moviePath := range fileList {
+				stat, err := os.Stat(path.Join(t.Flag.In, moviePath.Name()))
 				if err != nil {
-					log.Fatal(err)
+					log.Error(err)
+					continue
 				}
-				if err := t.saveBlockList(f, blocks); err != nil {
-					log.Fatal(err)
+				if !stat.IsDir() {
+					log.Warn(moviePath, " is not a directory")
+					continue
 				}
+				ext := path.Ext(moviePath.Name())
+				if ext == ".d" {
+					// It's a TV series
+
+				} else {
+
+				}
+				log.Debug("enter: ", moviePath.Name())
+				//if err := t.convertToSrt(path.Join(moviePath.Name(), "subtitle")); err != nil {
+				//	log.Fatal(err)
+				//}
 			}
 		},
 	}
