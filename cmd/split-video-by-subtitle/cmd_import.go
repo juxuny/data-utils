@@ -173,8 +173,14 @@ func (t *importCmd) importSubtitleResource(name string, dir string, resType mode
 				if ext != ".srt" {
 					continue
 				}
-				subtitleItem := model.EngSubtitle{}
-				if err := db.FirstOrCreate(&subtitleItem, "sub_name = ? AND file_name = ?", subtitleDir.Name(), item.Name()).Error; err != nil {
+				subtitleItem := model.EngSubtitle{
+					MovieId:    movie.Id,
+					SubName:    strings.TrimRight(subtitleDir.Name(), dirExt),
+					Ext:        ext,
+					FileName:   item.Name(),
+					CreateTime: lib.Time.NowPointer(),
+				}
+				if err := db.Where("sub_name = ? AND movie_id = ?", subtitleDir.Name(), movie.Id).FirstOrCreate(&subtitleItem).Error; err != nil {
 					log.Error(err)
 					return errors.Wrap(err, "init subtitle")
 				}
