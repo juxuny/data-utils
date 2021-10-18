@@ -180,11 +180,16 @@ func (t *importCmd) importSubtitleResource(name string, dir string, resType mode
 					FileName:   item.Name(),
 					CreateTime: lib.Time.NowPointer(),
 				}
-				if err := db.Where("sub_name = ? AND movie_id = ?", subtitleDir.Name(), movie.Id).FirstOrCreate(&subtitleItem).Error; err != nil {
+				result := db.Where("sub_name = ? AND movie_id = ?", subtitleDir.Name(), movie.Id).FirstOrCreate(&subtitleItem)
+				if err := result.Error; err != nil {
 					log.Error(err)
 					return errors.Wrap(err, "init subtitle")
 				}
 				file := path.Join(dir, subtitleDir.Name(), item.Name())
+				if result.RowsAffected > 0 {
+					log.Debug("ignore:", file)
+					continue
+				}
 				log.Debug(file)
 				blocks, err := srt.ParseFile(file)
 				if err != nil {
