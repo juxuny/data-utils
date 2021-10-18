@@ -19,6 +19,7 @@ type EngSubtitleBlock struct {
 	DurationExtend string     `json:"durationExtend" gorm:"type:varchar(200)"`
 	Content        string     `json:"content" gorm:"type:text"`
 	CreateTime     *time.Time `json:"createTime" gorm:"type:timestamp;default"`
+	DeletedAt      *time.Time `json:"deletedAt" gorm:"type:timestamp;default"`
 }
 
 func (t EngSubtitleBlock) MoveToBeginning() (ret EngSubtitleBlock, err error) {

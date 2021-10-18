@@ -120,7 +120,7 @@ func (t *importCmd) importTvSeries(name string) error {
 			continue
 		}
 		resourcePath := path.Join(t.Flag.In, name, item.Name())
-		if err := t.importSubtitleResource(tvName, resourcePath); err != nil {
+		if err := t.importSubtitleResource(tvName, resourcePath, model.ResTypeTv); err != nil {
 			log.Error(err)
 			return errors.Wrap(err, "import subtitle resource failed")
 		}
@@ -128,32 +128,95 @@ func (t *importCmd) importTvSeries(name string) error {
 	return nil
 }
 
-func (t *importCmd) importSubtitleResource(name string, dir string) error {
+func (t *importCmd) importSubtitleResource(name string, dir string, resType model.ResType) error {
 	log.Debug("importing: ", dir)
 	subtitleDirList, err := os.ReadDir(dir)
 	if err != nil {
 		log.Error(err)
 		return errors.Wrap(err, "load subtitle dir list failed")
 	}
-	for _, subtitleDir := range subtitleDirList {
-		dirExt := path.Ext(subtitleDir.Name())
-		if dirExt != ".subtitle" {
-			continue
+	if err := t.db.Begin(func(db *gorm.DB) error {
+		var movie model.EngMovie
+		// check if movie exists
+		if err := db.Where("name = ?", name).First(&movie).Error; err != nil {
+			if !model.IsErrNoDataInDb(err) {
+				log.Error(err)
+				return errors.Wrap(err, "query database failed")
+			} else {
+				// not found movie, create a new record
+				movie = model.EngMovie{
+					Name:       name,
+					ParentId:   0,
+					ResType:    resType,
+					CreateTime: lib.Time.NowPointer(),
+					Status:     model.StatusEnable,
+				}
+				if err := db.Create(&movie).Error; err != nil {
+					log.Error(err)
+					return errors.Wrap(err, "init movie failed")
+				}
+			}
 		}
-		srtList, err := os.ReadDir(path.Join(dir, subtitleDir.Name()))
-		if err != nil {
-			log.Error(err)
-			return errors.Wrap(err, "load subtitle dir failed")
-		}
-		for _, item := range srtList {
-			ext := path.Ext(item.Name())
-			if ext != ".srt" {
+		for _, subtitleDir := range subtitleDirList {
+			dirExt := path.Ext(subtitleDir.Name())
+			if dirExt != ".subtitle" {
 				continue
 			}
-			file := path.Join(dir, subtitleDir.Name(), item.Name())
-			log.Debug(file)
+			srtList, err := os.ReadDir(path.Join(dir, subtitleDir.Name()))
+			if err != nil {
+				log.Error(err)
+				return errors.Wrap(err, "load subtitle dir failed")
+			}
+
+			for _, item := range srtList {
+				ext := path.Ext(item.Name())
+				if ext != ".srt" {
+					continue
+				}
+				subtitleItem := model.EngSubtitle{}
+				if err := db.FirstOrCreate(&subtitleItem, "sub_name = ? AND file_name = ?", subtitleDir.Name(), item.Name()).Error; err != nil {
+					log.Error(err)
+					return errors.Wrap(err, "init subtitle")
+				}
+				file := path.Join(dir, subtitleDir.Name(), item.Name())
+				log.Debug(file)
+				blocks, err := srt.ParseFile(file)
+				if err != nil {
+					log.Error(err)
+					continue
+				}
+				insertExecutor := model.NewInsertExecutor(true).Model(model.EngSubtitleBlock{})
+				for _, b := range blocks {
+					if insertExecutor.DataLen() > 100 {
+						if _, err := insertExecutor.Exec(db); err != nil {
+							log.Error(err)
+							return errors.Wrap(err, "save blocks failed")
+						}
+						model.NewInsertExecutor(true).Model(model.EngSubtitleBlock{})
+					}
+					insertExecutor.Add(model.EngSubtitleBlock{
+						SubtitleId:     subtitleItem.Id,
+						BlockId:        b.Id,
+						StartTime:      b.StartTime.Format(lib.TimeInMillionLayout),
+						EndTime:        b.EndTime.Format(lib.TimeInMillionLayout),
+						DurationExtend: "",
+						Content:        b.Content(),
+						CreateTime:     lib.Time.NowPointer(),
+					})
+				}
+				if insertExecutor.DataLen() > 0 {
+					if _, err := insertExecutor.Exec(db); err != nil {
+						log.Error(err)
+						return errors.Wrap(err, "save blocks failed")
+					}
+				}
+			}
 		}
+		return nil
+	}); err != nil {
+		return errors.Wrap(err, "save subtitle failed")
 	}
+
 	return nil
 }
 
@@ -189,7 +252,7 @@ func (t *importCmd) Build() *cobra.Command {
 						log.Error(err)
 					}
 				} else {
-					if err := t.importSubtitleResource(moviePath.Name(), path.Join(t.Flag.In, moviePath.Name())); err != nil {
+					if err := t.importSubtitleResource(moviePath.Name(), path.Join(t.Flag.In, moviePath.Name()), model.ResTypeNormal); err != nil {
 						log.Error(err)
 					}
 				}
