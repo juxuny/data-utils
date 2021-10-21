@@ -1,6 +1,9 @@
 package lib
 
-import "unicode"
+import (
+	"strings"
+	"unicode"
+)
 
 func StringSliceFilter(in []string, f func(item string) bool) []string {
 	ret := make([]string, 0)
@@ -53,4 +56,41 @@ func (_String) SplitWithStopFunc(text string, stopFunc func(x rune) bool) []stri
 		ret = append(ret, string(item))
 	}
 	return ret
+}
+
+func (_String) TrimSubString(in, subString string) (out string) {
+	return String.TrimSubStringLeft(String.TrimSubStringRight(in, subString), subString)
+}
+
+func (_String) Reverse(in string) string {
+	b := []byte(in)
+	out := make([]byte, len(b))
+	copy(out, b)
+	for i := 0; i < len(b)>>1; i++ {
+		out[i], out[len(out)-1-i] = out[len(out)-1-i], out[i]
+	}
+	return string(out)
+}
+
+func (_String) TrimSubStringLeft(in, subString string) string {
+	if len(in) < len(subString) {
+		return in
+	}
+	var out string
+	last := in
+	out = strings.Replace(in, subString, "", 1)
+	for out != last {
+		last = out
+		out = strings.Replace(in, subString, "", 1)
+	}
+	return out
+}
+
+func (_String) TrimSubStringRight(in, subString string) string {
+	if len(in) < len(subString) {
+		return in
+	}
+	reversedInput := String.Reverse(in)
+	reversedSubString := String.Reverse(subString)
+	return String.Reverse(String.TrimSubStringLeft(reversedInput, reversedSubString))
 }

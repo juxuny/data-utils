@@ -8,12 +8,12 @@ import (
 	"github.com/juxuny/data-utils/log"
 	"github.com/juxuny/data-utils/model"
 	"github.com/juxuny/data-utils/srt"
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"io/fs"
 	"io/ioutil"
 	"os"
 	"path"
-	"path/filepath"
 	"strings"
 	"time"
 	"unicode"
@@ -67,29 +67,63 @@ func (t *searchCmd) initFlag(cmd *cobra.Command) {
 }
 
 func (t *searchCmd) loadFileList(dir string) (list []string, err error) {
-	if err := filepath.WalkDir(dir, func(file string, d fs.DirEntry, err error) error {
-		if d.IsDir() {
-			return nil
+	var fileList []fs.FileInfo
+	fileList, err = ioutil.ReadDir(dir)
+	if err != nil {
+		log.Error(err)
+		return nil, errors.Wrap(err, "load dir failed")
+	}
+	for _, f := range fileList {
+		if !f.IsDir() {
+			continue
 		}
-		ext := strings.Trim(path.Ext(d.Name()), ".")
-		if ext == t.Flag.Ext {
-			log.Debug("detect: ", file)
-			list = append(list, file)
-		}
-		return nil
-	}); err != nil {
-		return nil, err
+		list = append(list, path.Join(dir, f.Name()))
 	}
 	return
 }
 
-func (t *searchCmd) findVideoFile(fileList []string, videoName string) (file string, err error) {
+func (t *searchCmd) getVideoFileList(dir, ext string) (list []string, err error) {
+	l, err := ioutil.ReadDir(dir)
+	if err != nil {
+		log.Error(err)
+		return nil, errors.Wrap(err, "get video file list")
+	}
+	for _, f := range l {
+		if !f.IsDir() {
+			continue
+		}
+		fileExt := path.Ext(f.Name())
+		if strings.Trim(fileExt, ".") != ext {
+			continue
+		}
+		list = append(list, path.Join(dir, f.Name()))
+	}
+	return
+}
+
+func (t *searchCmd) findVideoFile(fileList []string, videoName string, srtName string) (file string, err error) {
 	for _, item := range fileList {
-		baseName := path.Base(item)
-		ext := path.Ext(baseName)
-		baseName = strings.TrimRight(baseName, ext)
-		if strings.Contains(videoName, baseName) {
-			return item, nil
+		tmpVideoName := path.Base(item)
+		tmpVideoName = lib.String.TrimSubStringRight(tmpVideoName, t.Flag.Ext)
+		tmpVideoName = strings.Trim(tmpVideoName, ".")
+		if tmpVideoName == videoName {
+			videoFileList, err := t.getVideoFileList(item, t.Flag.Ext)
+			if err != nil {
+				log.Error(err)
+				continue
+			}
+			for _, vf := range videoFileList {
+				log.Debug(vf)
+				videoDir := path.Dir(vf)
+				name := path.Base(vf)
+				ext := path.Ext(vf)
+				name = lib.String.TrimSubStringRight(name, ext)
+				srtDir := path.Join(videoDir, name+SubtitleDirSuffix)
+				log.Debug("===>", srtDir)
+				if stat, err := os.Stat(path.Join(srtDir, srtName)); err == nil && !stat.IsDir() {
+					return vf, nil
+				}
+			}
 		}
 	}
 	return "", lib.ErrNotFound
@@ -294,7 +328,8 @@ func (t *searchCmd) searchAndSaveResult() {
 		if movie, b := movieMap[item.Subtitle.MovieId]; b {
 			item.Movie = movie
 		}
-		videoFile, err := t.findVideoFile(fileList, item.Movie.Name)
+		//log.Debug(path.Join(item.Movie.Name, item.Subtitle.FileName))
+		videoFile, err := t.findVideoFile(fileList, item.Movie.Name, item.Subtitle.FileName)
 		if err != nil {
 			log.Info(err, " ", item.Movie.Name)
 			continue
