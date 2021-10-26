@@ -180,13 +180,17 @@ func (t *importCmd) importSubtitleResource(name string, dir string, resType mode
 					FileName:   item.Name(),
 					CreateTime: lib.Time.NowPointer(),
 				}
-				result := db.Where("sub_name = ? AND movie_id = ?", subtitleDir.Name(), movie.Id).FirstOrCreate(&subtitleItem)
+				result := db.Where(
+					"sub_name = ? AND movie_id = ?",
+					strings.TrimRight(subtitleDir.Name(), dirExt),
+					movie.Id,
+				).FirstOrCreate(&subtitleItem)
 				if err := result.Error; err != nil {
 					log.Error(err)
 					return errors.Wrap(err, "init subtitle")
 				}
 				file := path.Join(dir, subtitleDir.Name(), item.Name())
-				if result.RowsAffected > 0 {
+				if result.RowsAffected == 0 {
 					log.Debug("ignore:", file)
 					continue
 				}
@@ -198,7 +202,7 @@ func (t *importCmd) importSubtitleResource(name string, dir string, resType mode
 				}
 				insertExecutor := model.NewInsertExecutor(true).Model(model.EngSubtitleBlock{})
 				for _, b := range blocks {
-					if insertExecutor.DataLen() > 100 {
+					if insertExecutor.DataLen() > 1000 {
 						if _, err := insertExecutor.Exec(db); err != nil {
 							log.Error(err)
 							return errors.Wrap(err, "save blocks failed")

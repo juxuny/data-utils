@@ -154,6 +154,9 @@ func preHandle(data []byte) []byte {
 */
 func fix(blocks []string) []string {
 	ret := make([]string, 0)
+	if len(blocks) == 0 {
+		return ret
+	}
 	buf := blocks[0]
 	i := 1
 	for i < len(blocks) {
